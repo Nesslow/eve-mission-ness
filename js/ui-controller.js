@@ -208,7 +208,7 @@ const UIController = (() => {
   /**
    * Display parsed inventory
    */
-  function displayParsedInventory(items) {
+  async function displayParsedInventory(items) {
     const parsedInventory = document.getElementById('parsed-inventory');
     const inventoryList = document.getElementById('inventory-list');
     
@@ -233,7 +233,7 @@ const UIController = (() => {
           <div>${item.name}</div>
           <div class="inventory-quantity">Quantity: ${item.quantity}</div>
         </div>
-        <div class="inventory-value" data-item-id="${item.id}">${formatISK(item.totalValue)}</div>
+        <div class="inventory-value" data-item-id="${item.id}">${formatISK(item.totalValue || 0)}</div>
       `;
       
       inventoryList.appendChild(itemElement);
@@ -244,6 +244,39 @@ const UIController = (() => {
     
     // Store inventory items
     MissionTracker.setInventoryItems(items);
+    
+    // Fetch market prices if MarketAPI is available
+    if (typeof MarketAPI !== 'undefined' && items.length > 0) {
+      try {
+        showInfo('Fetching market prices...');
+        const priceMap = await MarketAPI.getBatchItemPrices(items);
+        
+        // Update items with market prices
+        items.forEach(item => {
+          if (priceMap[item.name]) {
+            item.marketPrice = priceMap[item.name];
+            item.totalValue = item.marketPrice * item.quantity;
+            
+            // Update the UI for this item
+            const valueElem = document.querySelector(`.inventory-value[data-item-id="${item.id}"]`);
+            if (valueElem) {
+              valueElem.textContent = formatISK(item.totalValue);
+            }
+          }
+        });
+        
+        // Update total value after price fetch
+        updateInventoryTotal();
+        
+        // Update stored items
+        MissionTracker.setInventoryItems(items);
+        
+        showSuccess('Market prices updated successfully!');
+      } catch (error) {
+        console.warn('Market price fetch failed:', error);
+        showWarning('Failed to fetch market prices. Using estimated values.');
+      }
+    }
   }
 
   /**
@@ -286,6 +319,25 @@ const UIController = (() => {
     }
     
     return cleanValue || 0;
+  }
+
+  /**
+   * Format ISK value for display
+   */
+  function formatISK(value) {
+    if (typeof value !== 'number') {
+      return '0 ISK';
+    }
+    
+    if (value >= 1000000000) {
+      return (value / 1000000000).toFixed(2) + ' B ISK';
+    } else if (value >= 1000000) {
+      return (value / 1000000).toFixed(2) + ' M ISK';
+    } else if (value >= 1000) {
+      return (value / 1000).toFixed(2) + ' K ISK';
+    } else {
+      return value.toFixed(0) + ' ISK';
+    }
   }
 
   /**
@@ -821,7 +873,7 @@ const UIController = (() => {
   }
 
   // Public API
-  return {
+  const api = {
     init,
     showTab,
     showModal,
@@ -849,4 +901,6 @@ const UIController = (() => {
     editTemplate,
     deleteTemplate
   };
+  window.UIController = api;
+  return api;
 })();

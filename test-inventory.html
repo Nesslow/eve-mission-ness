@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Inventory Price Fetching</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #1a1a1a;
+            color: #fff;
+        }
+        .test-container {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        textarea {
+            width: 100%;
+            height: 100px;
+            background: #3a3a3a;
+            color: #fff;
+            border: 1px solid #555;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .inventory-item {
+            padding: 10px;
+            border-bottom: 1px solid #444;
+            display: flex;
+            align-items: center;
+        }
+        .inventory-info {
+            flex: 1;
+        }
+        .inventory-quantity {
+            font-size: 0.9rem;
+            color: #bdc3c7;
+        }
+        .inventory-value {
+            font-weight: bold;
+            color: #27ae60;
+            margin-left: auto;
+        }
+        .totals-row {
+            padding: 10px;
+            font-weight: bold;
+            border-top: 2px solid #444;
+        }
+        .hidden {
+            display: none;
+        }
+        .success {
+            color: #27ae60;
+        }
+        .error {
+            color: #e74c3c;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>Test Inventory Price Fetching</h1>
+        <h3>Instructions:</h3>
+        <p>1. Go to EVE Online</p>
+        <p>2. Open your inventory</p>
+        <p>3. Select some items and copy them (Ctrl+C)</p>
+        <p>4. Paste them in the textarea below</p>
+        <p>5. The app will automatically fetch market prices from EVE Praisal</p>
+        
+        <textarea id="inventory-paste" placeholder="Paste inventory items here..."></textarea>
+        
+        <div id="parsed-inventory" class="hidden">
+            <h4>Detected Items</h4>
+            <div id="inventory-list">
+                <!-- Will be populated dynamically -->
+            </div>
+            <div class="totals-row">
+                <span>Total Value:</span>
+                <span id="inventory-total-value">0 ISK</span>
+            </div>
+        </div>
+        
+        <div id="status"></div>
+    </div>
+
+    <script>
+        // Mock the missing dependencies
+        const missionDB = {
+            getSetting: async (key) => {
+                if (key === 'price-hub') return 'jita';
+                if (key === 'refresh-prices-on-load') return true;
+                return null;
+            }
+        };
+        
+        const MissionTracker = {
+            setInventoryItems: (items) => {
+                console.log('Setting inventory items:', items);
+            }
+        };
+        
+        function showInfo(message) {
+            document.getElementById('status').innerHTML = `<div style="color: #3498db;">${message}</div>`;
+        }
+        
+        function showSuccess(message) {
+            document.getElementById('status').innerHTML = `<div style="color: #27ae60;">${message}</div>`;
+        }
+        
+        function showWarning(message) {
+            document.getElementById('status').innerHTML = `<div style="color: #f39c12;">${message}</div>`;
+        }
+    </script>
+    
+    <!-- Load the actual scripts -->
+    <script src="js/market-api.js"></script>
+    <script src="js/inventory-parser.js"></script>
+    <script src="js/ui-controller.js"></script>
+    
+    <script>
+        // Initialize the market API
+        MarketAPI.init().then(() => {
+            console.log('Market API initialized');
+            
+            // Set up inventory paste handling
+            document.getElementById('inventory-paste').addEventListener('input', async (e) => {
+                const text = e.target.value;
+                if (text.trim()) {
+                    try {
+                        const parsedInventory = await InventoryParser.parse(text);
+                        UIController.displayParsedInventory(parsedInventory);
+                    } catch (error) {
+                        console.error('Error parsing inventory:', error);
+                        document.getElementById('status').innerHTML = `<div style="color: #e74c3c;">Error: ${error.message}</div>`;
+                    }
+                } else {
+                    document.getElementById('parsed-inventory').classList.add('hidden');
+                }
+            });
+        });
+    </script>
+</body>
+</html>

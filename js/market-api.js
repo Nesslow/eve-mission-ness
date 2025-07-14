@@ -1,36 +1,3 @@
-  /**
-   * Batch price lookup for multiple items using evepraisal
-   * @param {Array} items - Array of { name, quantity }
-   * @returns {Promise<Object>} - Map of item name to price
-   */
-  async function getBatchItemPrices(items) {
-    // Compose newline-separated list for evepraisal
-    const text = items.map(item => `${item.name}\t${item.quantity}`).join('\n');
-    try {
-      const response = await fetch(`https://evepraisal.com/appraisal.json?market=${currentPriceHub}&raw_textarea=${encodeURIComponent(text)}`);
-      if (!response.ok) throw new Error(`HTTP error ${response.status}`);
-      const data = await response.json();
-      const priceMap = {};
-      if (data && data.appraisal && data.appraisal.items) {
-        data.appraisal.items.forEach(item => {
-          // Use sell price as default (or buy if sell not available)
-          let price = 0;
-          if (item.prices && item.prices.sell && item.prices.sell.min) {
-            price = item.prices.sell.min;
-          } else if (item.prices && item.prices.buy && item.prices.buy.max) {
-            price = item.prices.buy.max;
-          } else if (item.prices && item.prices.all && item.prices.all.median) {
-            price = item.prices.all.median;
-          }
-          priceMap[item.name] = price;
-        });
-      }
-      return priceMap;
-    } catch (error) {
-      console.warn('Batch price fetch failed:', error);
-      throw error;
-    }
-  }
 /**
  * Market API Integration for EVE Mission Tracker
  * Fetches prices from EVE market APIs
@@ -156,6 +123,40 @@ const MarketAPI = (() => {
       console.info('Using fallback price estimation');
       const simulatedPrice = Math.round(Math.random() * 100000) / 100;
       return simulatedPrice;
+    }
+  }
+
+  /**
+   * Batch price lookup for multiple items using evepraisal
+   * @param {Array} items - Array of { name, quantity }
+   * @returns {Promise<Object>} - Map of item name to price
+   */
+  async function getBatchItemPrices(items) {
+    // Compose newline-separated list for evepraisal
+    const text = items.map(item => `${item.name}\t${item.quantity}`).join('\n');
+    try {
+      const response = await fetch(`https://evepraisal.com/appraisal.json?market=${currentPriceHub}&raw_textarea=${encodeURIComponent(text)}`);
+      if (!response.ok) throw new Error(`HTTP error ${response.status}`);
+      const data = await response.json();
+      const priceMap = {};
+      if (data && data.appraisal && data.appraisal.items) {
+        data.appraisal.items.forEach(item => {
+          // Use sell price as default (or buy if sell not available)
+          let price = 0;
+          if (item.prices && item.prices.sell && item.prices.sell.min) {
+            price = item.prices.sell.min;
+          } else if (item.prices && item.prices.buy && item.prices.buy.max) {
+            price = item.prices.buy.max;
+          } else if (item.prices && item.prices.all && item.prices.all.median) {
+            price = item.prices.all.median;
+          }
+          priceMap[item.name] = price;
+        });
+      }
+      return priceMap;
+    } catch (error) {
+      console.warn('Batch price fetch failed:', error);
+      throw error;
     }
   }
 

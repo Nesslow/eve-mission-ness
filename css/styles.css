@@ -598,6 +598,21 @@ textarea {
   color: var(--danger-color);
 }
 
+.inventory-info {
+  flex: 1;
+}
+
+.inventory-quantity {
+  font-size: 0.9rem;
+  color: #bdc3c7;
+}
+
+.inventory-value {
+  font-weight: bold;
+  color: var(--success-color);
+  margin-left: auto;
+}
+
 .transaction-controls {
   display: flex;
   gap: 0.5rem;

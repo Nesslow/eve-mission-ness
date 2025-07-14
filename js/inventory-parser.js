@@ -37,14 +37,8 @@ const InventoryParser = (() => {
           if (priceMap[item.name]) {
             item.marketPrice = priceMap[item.name];
             item.totalValue = item.marketPrice * item.quantity;
-            // Update the UI for this item if it is displayed
-            const valueElem = document.querySelector(`.inventory-value[data-item-id="${item.id}"]`);
-            if (valueElem) {
-              valueElem.textContent = UIController.formatISK(item.totalValue);
-            }
           }
         });
-        UIController.updateInventoryTotal();
       } catch (error) {
         console.warn('Batch price lookup failed:', error);
       }
