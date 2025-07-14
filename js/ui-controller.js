@@ -835,6 +835,7 @@ const UIController = (() => {
     displayParsedTransactions,
     displayParsedInventory,
     updateInventoryTotal,
+    formatISK,
     goToMissionStep,
     resetCompleteMissionSteps,
     updateMissionSummary,
