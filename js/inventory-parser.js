@@ -29,21 +29,9 @@ const InventoryParser = (() => {
       }
     }
 
-    // Batch price lookup using EVEpraisal if available
-    if (typeof MarketAPI !== 'undefined' && items.length > 0) {
-      try {
-        const priceMap = await MarketAPI.getBatchItemPrices(items);
-        items.forEach(item => {
-          if (priceMap[item.name]) {
-            item.marketPrice = priceMap[item.name];
-            item.totalValue = item.marketPrice * item.quantity;
-          }
-        });
-      } catch (error) {
-        console.warn('Batch price lookup failed:', error);
-      }
-    }
-
+    // Note: Market price lookup is now handled in the UI controller
+    // to provide better user feedback and error handling
+    
     return items;
   }
 
@@ -90,31 +78,11 @@ const InventoryParser = (() => {
       quantity: quantity,
       estimatedValue: estimatedValue,
       totalValue: estimatedValue * quantity,
-      marketPrice: 0 // Will be filled in later by market API
+      marketPrice: 0 // Will be filled in later by batch market API call
     };
     
-    // If we have a market API, try to get the price
-    if (typeof MarketAPI !== 'undefined') {
-      MarketAPI.getItemPrice(name)
-        .then(price => {
-          console.debug(`[InventoryParser] Market price for ${name}:`, price);
-          if (price) {
-            item.marketPrice = price;
-            item.totalValue = price * quantity;
-
-            // Update the UI for this item if it is displayed
-            const valueElem = document.querySelector(`.inventory-value[data-item-id="${item.id}"]`);
-            if (valueElem) {
-              valueElem.textContent = UIController.formatISK(item.totalValue);
-            }
-            // Update total value
-            UIController.updateInventoryTotal();
-          }
-        })
-        .catch(error => {
-          console.warn(`Could not get market price for ${name}:`, error);
-        });
-    }
+    // Note: Market price fetching is now handled in the UI controller
+    // in batch mode for better performance and user experience
     
     return item;
   }

@@ -758,6 +758,21 @@ textarea {
   flex: 1;
 }
 
+/* Pricing Strategy Setting Note */
+.setting-note {
+  margin-top: 0.5rem;
+  padding: 0.75rem;
+  background-color: rgba(52, 152, 219, 0.1);
+  border-left: 3px solid #3498db;
+  border-radius: 4px;
+}
+
+.setting-note p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #bdc3c7;
+}
+
 /* Responsive */
 @media (max-width: 1024px) {
   .main-layout {

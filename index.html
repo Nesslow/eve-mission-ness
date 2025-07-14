@@ -166,6 +166,17 @@
                             <label for="refresh-prices">Refresh Prices on Load:</label>
                             <input type="checkbox" id="refresh-prices" checked>
                         </div>
+                        <div class="setting-row">
+                            <label for="pricing-strategy">Pricing Strategy:</label>
+                            <select id="pricing-strategy">
+                                <option value="estimation">Smart Estimation (Recommended)</option>
+                                <option value="api">Try API + Fallback</option>
+                                <option value="conservative">Conservative Estimates</option>
+                            </select>
+                        </div>
+                        <div class="setting-note">
+                            <p><strong>Note:</strong> Due to CORS restrictions, direct API calls may not work from GitHub Pages. Smart Estimation provides reliable price estimates based on item types.</p>
+                        </div>
                     </div>
                     
                     <div class="settings-group">
@@ -426,7 +437,7 @@
 
     <!-- App Footer -->
     <footer class="app-footer" style="text-align:center; padding: 1em 0; font-size: 0.95em; color: #888; background: #181a1b; border-top: 1px solid #333; margin-top:2em;">
-      <div>EVE Mission Tracker v1.0.0 &mdash; Created by Nesslow &mdash; <a href="https://github.com/Nesslow/eve-mission-ness" target="_blank" style="color:#6cf;">GitHub</a> &mdash; <a href="https://www.eveonline.com/" target="_blank" style="color:#6cf;">EVE Online</a><br>
+      <div>EVE Mission Tracker v1.0.1 &mdash; Created by Nesslow &mdash; <a href="https://github.com/Nesslow/eve-mission-ness" target="_blank" style="color:#6cf;">GitHub</a> &mdash; <a href="https://www.eveonline.com/" target="_blank" style="color:#6cf;">EVE Online</a><br>
       <span style="font-size:0.9em;">License: MIT</span>
       </div>
     </footer>

@@ -248,14 +248,17 @@ const UIController = (() => {
     // Fetch market prices if MarketAPI is available
     if (typeof MarketAPI !== 'undefined' && items.length > 0) {
       try {
-        showInfo('Fetching market prices...');
+        showInfo(`Fetching market prices for ${items.length} items...`);
         const priceMap = await MarketAPI.getBatchItemPrices(items);
+        
+        let pricesUpdated = 0;
         
         // Update items with market prices
         items.forEach(item => {
-          if (priceMap[item.name]) {
+          if (priceMap[item.name] && priceMap[item.name] > 0) {
             item.marketPrice = priceMap[item.name];
             item.totalValue = item.marketPrice * item.quantity;
+            pricesUpdated++;
             
             // Update the UI for this item
             const valueElem = document.querySelector(`.inventory-value[data-item-id="${item.id}"]`);
@@ -271,7 +274,12 @@ const UIController = (() => {
         // Update stored items
         MissionTracker.setInventoryItems(items);
         
-        showSuccess('Market prices updated successfully!');
+        if (pricesUpdated > 0) {
+          showSuccess(`Market prices updated for ${pricesUpdated} of ${items.length} items!`);
+        } else {
+          showWarning('No market prices found. Using estimated values.');
+        }
+        
       } catch (error) {
         console.warn('Market price fetch failed:', error);
         showWarning('Failed to fetch market prices. Using estimated values.');

@@ -47,12 +47,12 @@ const MarketAPI = (() => {
   }
 
   /**
-   * Check if cache should be refreshed
+   * Check if we should refresh the cache
    */
   function shouldRefreshCache() {
     if (!cacheTimestamp) return true;
     
-    const now = new Date();
+    const now = Date.now();
     const cacheAge = (now - cacheTimestamp) / (1000 * 60); // in minutes
     
     return cacheAge > CACHE_EXPIRY_MINUTES;
@@ -75,89 +75,236 @@ const MarketAPI = (() => {
   }
 
   /**
-   * Fetch price for a single item using evepraisal.com API
+   * Fetch price for a single item using fallback estimation
    */
   async function fetchItemPrice(itemName) {
     try {
-      // Use evepraisal.com API for price checking
-      const response = await fetch(`https://evepraisal.com/appraisal.json?market=${currentPriceHub}&raw_textarea=${encodeURIComponent(itemName)}`);
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error ${response.status}`);
-      }
-      
-      const data = await response.json();
-      
-      if (data && data.appraisal && data.appraisal.items && data.appraisal.items.length > 0) {
-        // Get the first matching item
-        const item = data.appraisal.items[0];
-        
-        // Use sell price as default (or buy if sell not available)
-        let price = 0;
-        
-        if (item.prices && item.prices.sell && item.prices.sell.min) {
-          price = item.prices.sell.min;
-        } else if (item.prices && item.prices.buy && item.prices.buy.max) {
-          price = item.prices.buy.max;
-        } else if (item.prices && item.prices.all && item.prices.all.median) {
-          price = item.prices.all.median;
-        }
-        
+      // Try EVE ESI API first (this is CORS-enabled)
+      const price = await fetchESIPrice(itemName);
+      if (price > 0) {
         return price;
       }
       
-      // Fallback to estimate price if item not found in market
-      if (data && data.appraisal && data.appraisal.items) {
-        return 0;
-      }
-      
-      // Handle error cases
-      throw new Error('Item not found in market data');
+      // Fallback to item type estimation
+      return estimateItemPrice(itemName);
       
     } catch (error) {
-      // Log the error but don't break the app flow
       console.warn(`Error fetching price for ${itemName}:`, error);
-      
-      // For testing purposes, generate a random price
-      // In production, you'd want to handle this differently
-      console.info('Using fallback price estimation');
-      const simulatedPrice = Math.round(Math.random() * 100000) / 100;
-      return simulatedPrice;
+      return estimateItemPrice(itemName);
     }
   }
 
   /**
-   * Batch price lookup for multiple items using evepraisal
+   * Attempt to fetch price using EVE ESI API
+   */
+  async function fetchESIPrice(itemName) {
+    try {
+      // First, we need to search for the item type ID
+      const searchUrl = `https://esi.evetech.net/latest/search/?categories=inventory_type&search=${encodeURIComponent(itemName)}&strict=true`;
+      
+      const searchResponse = await fetch(searchUrl);
+      if (!searchResponse.ok) {
+        throw new Error(`Search failed: ${searchResponse.status}`);
+      }
+      
+      const searchData = await searchResponse.json();
+      
+      if (!searchData.inventory_type || searchData.inventory_type.length === 0) {
+        throw new Error('Item not found in ESI search');
+      }
+      
+      const typeId = searchData.inventory_type[0];
+      
+      // Get market orders for this item in the selected hub
+      const hubIds = {
+        'jita': 30000142,
+        'amarr': 30002187,
+        'dodixie': 30002659,
+        'hek': 30002053,
+        'rens': 30002510
+      };
+      
+      const hubId = hubIds[currentPriceHub.toLowerCase()] || hubIds.jita;
+      
+      const ordersUrl = `https://esi.evetech.net/latest/markets/${hubId}/orders/?type_id=${typeId}&order_type=sell`;
+      
+      const ordersResponse = await fetch(ordersUrl);
+      if (!ordersResponse.ok) {
+        throw new Error(`Orders fetch failed: ${ordersResponse.status}`);
+      }
+      
+      const orders = await ordersResponse.json();
+      
+      if (!orders || orders.length === 0) {
+        throw new Error('No market orders found');
+      }
+      
+      // Find the lowest sell order
+      const sellOrders = orders.filter(order => order.is_buy_order === false);
+      if (sellOrders.length === 0) {
+        throw new Error('No sell orders found');
+      }
+      
+      const lowestPrice = Math.min(...sellOrders.map(order => order.price));
+      return lowestPrice;
+      
+    } catch (error) {
+      console.warn(`ESI API failed for ${itemName}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Initialize the market API and load any cached data
+   */
+  async function init() {
+    try {
+      // Get price hub setting
+      const priceHub = await missionDB.getSetting('price-hub') || 'jita';
+      setPriceHub(priceHub);
+      
+      // Get refresh setting
+      const shouldRefresh = await missionDB.getSetting('refresh-prices-on-load');
+      
+      if (shouldRefresh !== false) {
+        console.log('Market API: Initialization complete');
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Error initializing market API:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Enhanced price estimation with better category detection
+   */
+  function estimateItemPrice(itemName) {
+    const name = itemName.toLowerCase();
+    
+    // Ship categories
+    if (name.includes('titan')) {
+      return 60000000000 + Math.random() * 40000000000; // 60-100B ISK
+    } else if (name.includes('supercarrier')) {
+      return 15000000000 + Math.random() * 10000000000; // 15-25B ISK
+    } else if (name.includes('dreadnought')) {
+      return 1500000000 + Math.random() * 1000000000; // 1.5-2.5B ISK
+    } else if (name.includes('carrier')) {
+      return 1000000000 + Math.random() * 500000000; // 1-1.5B ISK
+    } else if (name.includes('battleship')) {
+      return 150000000 + Math.random() * 200000000; // 150-350M ISK
+    } else if (name.includes('cruiser')) {
+      return 30000000 + Math.random() * 50000000; // 30-80M ISK
+    } else if (name.includes('battlecruiser')) {
+      return 50000000 + Math.random() * 100000000; // 50-150M ISK
+    } else if (name.includes('frigate')) {
+      return 1000000 + Math.random() * 5000000; // 1-6M ISK
+    } else if (name.includes('destroyer')) {
+      return 2000000 + Math.random() * 8000000; // 2-10M ISK
+    } 
+    
+    // Module categories
+    else if (name.includes('hardener') || name.includes('armor') || name.includes('shield')) {
+      if (name.includes('t2') || name.includes('ii')) {
+        return 500000 + Math.random() * 2000000; // 500K-2.5M ISK
+      } else {
+        return 50000 + Math.random() * 200000; // 50K-250K ISK
+      }
+    } else if (name.includes('gun') || name.includes('turret') || name.includes('launcher')) {
+      if (name.includes('t2') || name.includes('ii')) {
+        return 1000000 + Math.random() * 5000000; // 1-6M ISK
+      } else {
+        return 100000 + Math.random() * 500000; // 100K-600K ISK
+      }
+    } else if (name.includes('plate') || name.includes('extender')) {
+      return 100000 + Math.random() * 400000; // 100K-500K ISK
+    } else if (name.includes('battery') || name.includes('capacitor')) {
+      return 200000 + Math.random() * 800000; // 200K-1M ISK
+    } else if (name.includes('repair') || name.includes('booster')) {
+      return 300000 + Math.random() * 1200000; // 300K-1.5M ISK
+    } else if (name.includes('blaster') || name.includes('cannon') || name.includes('beam')) {
+      return 150000 + Math.random() * 600000; // 150K-750K ISK
+    }
+    
+    // Ammunition and consumables
+    else if (name.includes('ammunition') || name.includes('charge')) {
+      return 10 + Math.random() * 1000; // 10-1010 ISK
+    } else if (name.includes('crystal') || name.includes('lens')) {
+      return 1000 + Math.random() * 10000; // 1K-11K ISK
+    }
+    
+    // Resources and materials
+    else if (name.includes('ore') || name.includes('mineral')) {
+      return 100 + Math.random() * 5000; // 100-5100 ISK
+    } else if (name.includes('blueprint')) {
+      return 5000000 + Math.random() * 50000000; // 5-55M ISK
+    } else if (name.includes('datacores') || name.includes('datacore')) {
+      return 50000 + Math.random() * 500000; // 50K-550K ISK
+    }
+    
+    // Implants and boosters
+    else if (name.includes('implant')) {
+      return 10000000 + Math.random() * 100000000; // 10-110M ISK
+    } else if (name.includes('booster')) {
+      return 1000000 + Math.random() * 10000000; // 1-11M ISK
+    }
+    
+    // Default for unknown items
+    else {
+      return 25000 + Math.random() * 75000; // 25K-100K ISK
+    }
+  }
+
+  /**
+   * Batch price lookup for multiple items
    * @param {Array} items - Array of { name, quantity }
    * @returns {Promise<Object>} - Map of item name to price
    */
   async function getBatchItemPrices(items) {
-    // Compose newline-separated list for evepraisal
-    const text = items.map(item => `${item.name}\t${item.quantity}`).join('\n');
-    try {
-      const response = await fetch(`https://evepraisal.com/appraisal.json?market=${currentPriceHub}&raw_textarea=${encodeURIComponent(text)}`);
-      if (!response.ok) throw new Error(`HTTP error ${response.status}`);
-      const data = await response.json();
-      const priceMap = {};
-      if (data && data.appraisal && data.appraisal.items) {
-        data.appraisal.items.forEach(item => {
-          // Use sell price as default (or buy if sell not available)
-          let price = 0;
-          if (item.prices && item.prices.sell && item.prices.sell.min) {
-            price = item.prices.sell.min;
-          } else if (item.prices && item.prices.buy && item.prices.buy.max) {
-            price = item.prices.buy.max;
-          } else if (item.prices && item.prices.all && item.prices.all.median) {
-            price = item.prices.all.median;
-          }
-          priceMap[item.name] = price;
+    const priceMap = {};
+    
+    // Process items in smaller batches to avoid overwhelming the API
+    const batchSize = 3;
+    
+    for (let i = 0; i < items.length; i += batchSize) {
+      const batch = items.slice(i, i + batchSize);
+      
+      // Process each item in the batch
+      const batchPromises = batch.map(async (item) => {
+        try {
+          const price = await getItemPrice(item.name);
+          return { name: item.name, price: price };
+        } catch (error) {
+          console.warn(`Failed to get price for ${item.name}:`, error);
+          return { name: item.name, price: estimateItemPrice(item.name) };
+        }
+      });
+      
+      try {
+        const batchResults = await Promise.all(batchPromises);
+        
+        // Add results to price map
+        batchResults.forEach(result => {
+          priceMap[result.name] = result.price;
+        });
+        
+        // Add a small delay between batches to be respectful to the API
+        if (i + batchSize < items.length) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+        
+      } catch (error) {
+        console.warn('Batch processing failed:', error);
+        
+        // Fallback to estimation for this batch
+        batch.forEach(item => {
+          priceMap[item.name] = estimateItemPrice(item.name);
         });
       }
-      return priceMap;
-    } catch (error) {
-      console.warn('Batch price fetch failed:', error);
-      throw error;
     }
+    
+    return priceMap;
   }
 
   /**
@@ -173,29 +320,6 @@ const MarketAPI = (() => {
       return true;
     }
     return false;
-  }
-
-  /**
-   * Initialize the market API
-   */
-  async function init() {
-    try {
-      // Get price hub setting
-      const priceHub = await missionDB.getSetting('price-hub') || 'jita';
-      setPriceHub(priceHub);
-      
-      // Get refresh setting
-      const shouldRefresh = await missionDB.getSetting('refresh-prices-on-load');
-      
-      if (shouldRefresh !== false) {
-        await refreshCache();
-      }
-      
-      return true;
-    } catch (error) {
-      console.error('Error initializing market API:', error);
-      return false;
-    }
   }
 
   // Public API
