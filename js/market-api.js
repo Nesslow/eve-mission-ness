@@ -1,6 +1,6 @@
 /**
  * Market API Integration for EVE Mission Tracker
- * Uses only ESI (EVE Swagger Interface) API
+ * Uses ESI API to get top 5% average sell prices in Jita IV - Moon 4 - Caldari Navy Assembly Plant
  */
 
 const MarketAPI = (() => {
@@ -23,8 +23,11 @@ const MarketAPI = (() => {
   // The Forge region ID (where Jita is located)
   const THE_FORGE_REGION_ID = 10000002;
   
+  // Jita IV - Moon 4 - Caldari Navy Assembly Plant station ID
+  const JITA_STATION_ID = 60003760;
+  
   /**
-   * Get price for an item
+   * Get top 5% average sell price for an item in Jita
    */
   async function getItemPrice(itemName) {
     // Check if we need to refresh the cache
@@ -52,6 +55,37 @@ const MarketAPI = (() => {
       console.error(`Error fetching price for "${itemName}":`, error.message);
       throw error;
     }
+  }
+
+  /**
+   * Get prices for multiple items (batch processing)
+   */
+  async function getBatchItemPrices(items) {
+    const results = [];
+    
+    for (const item of items) {
+      try {
+        const price = await getItemPrice(item.name);
+        results.push({
+          name: item.name,
+          quantity: item.quantity || 1,
+          unitPrice: price,
+          totalPrice: price * (item.quantity || 1),
+          success: true
+        });
+      } catch (error) {
+        results.push({
+          name: item.name,
+          quantity: item.quantity || 1,
+          unitPrice: 0,
+          totalPrice: 0,
+          success: false,
+          error: error.message
+        });
+      }
+    }
+    
+    return results;
   }
 
   /**
@@ -91,7 +125,7 @@ const MarketAPI = (() => {
   }
 
   /**
-   * Fetch price for a single item
+   * Fetch top 5% average sell price for a single item in Jita
    */
   async function fetchItemPrice(itemName) {
     try {
@@ -102,7 +136,7 @@ const MarketAPI = (() => {
         throw new Error(`Item type ID not found for: ${itemName}`);
       }
       
-      // Get market orders for this item in The Forge region
+      // Get sell orders for this item in The Forge region
       const ordersUrl = `https://esi.evetech.net/latest/markets/${THE_FORGE_REGION_ID}/orders/?type_id=${typeId}&order_type=sell`;
       
       const ordersResponse = await fetch(ordersUrl);
@@ -116,14 +150,20 @@ const MarketAPI = (() => {
         throw new Error('No market orders found');
       }
       
-      // Find the lowest sell order
-      const sellOrders = orders.filter(order => order.is_buy_order === false);
-      if (sellOrders.length === 0) {
-        throw new Error('No sell orders found');
+      // Filter to only Jita station orders
+      const jitaOrders = orders.filter(order => 
+        order.location_id === JITA_STATION_ID && 
+        order.is_buy_order === false
+      );
+      
+      if (jitaOrders.length === 0) {
+        throw new Error('No sell orders found in Jita IV - Moon 4 - Caldari Navy Assembly Plant');
       }
       
-      const lowestPrice = Math.min(...sellOrders.map(order => order.price));
-      return lowestPrice;
+      // Calculate top 5% average price
+      const top5PercentPrice = calculateTop5PercentAverage(jitaOrders);
+      
+      return top5PercentPrice;
       
     } catch (error) {
       console.error(`Failed to fetch price for ${itemName}:`, error.message);
@@ -132,7 +172,25 @@ const MarketAPI = (() => {
   }
 
   /**
-   * Find type ID by item name using ESI API
+   * Calculate average of lowest 5% of orders in Jita
+   */
+  function calculateTop5PercentAverage(orders) {
+    // Sort orders by price (lowest first)
+    const sortedOrders = orders.sort((a, b) => a.price - b.price);
+    
+    // Calculate top 5% (minimum 1 order)
+    const top5Count = Math.max(1, Math.ceil(sortedOrders.length * 0.05));
+    const top5Orders = sortedOrders.slice(0, top5Count);
+    
+    // Calculate average price
+    const totalPrice = top5Orders.reduce((sum, order) => sum + order.price, 0);
+    const averagePrice = totalPrice / top5Orders.length;
+    
+    return Math.round(averagePrice * 100) / 100; // Round to 2 decimal places
+  }
+
+  /**
+   * Find type ID by item name
    */
   async function findTypeIdByName(itemName) {
     // Normalize the item name for caching
@@ -144,10 +202,7 @@ const MarketAPI = (() => {
     }
     
     try {
-      // For now, we'll use a hybrid approach:
-      // 1. Try common items first (fast lookup)
-      // 2. If not found, fall back to Fuzzwork API (more reliable than loading all ESI data)
-      
+      // Common items cache for faster lookup
       const commonItems = {
         'rifter': 587,
         'merlin': 603,
@@ -171,8 +226,7 @@ const MarketAPI = (() => {
         return commonItems[normalizedName];
       }
       
-      // If not in common items, use Fuzzwork API as fallback
-      // (This is more reliable than loading all ESI type data)
+      // Use Fuzzwork API for type ID lookup
       await rateLimitedFetch();
       
       const apiUrl = `https://www.fuzzwork.co.uk/api/typeid.php?typename=${encodeURIComponent(itemName)}`;
@@ -186,16 +240,14 @@ const MarketAPI = (() => {
       
       let typeId = null;
       
-      // The API returns either a single result or an array of results
+      // Handle API response format
       if (Array.isArray(data)) {
-        // If multiple results, take the first one
         typeId = data.length > 0 ? data[0].typeID : null;
       } else if (data.typeID) {
-        // Single result
         typeId = data.typeID;
       }
       
-      // Cache the result (even if null to avoid repeated failed lookups)
+      // Cache the result
       typeIdCache[normalizedName] = typeId;
       
       return typeId;
@@ -221,6 +273,7 @@ const MarketAPI = (() => {
   // Public API
   return {
     getItemPrice,
+    getBatchItemPrices,
     clearAllCaches
   };
 })();

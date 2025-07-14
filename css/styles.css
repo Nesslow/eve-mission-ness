@@ -773,6 +773,42 @@ textarea {
   color: #bdc3c7;
 }
 
+/* Inventory specific styles */
+.inventory-controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  padding: 0.5rem;
+  background-color: rgba(255, 255, 255, 0.02);
+  border-radius: var(--radius-small);
+}
+
+.price-status {
+  font-size: 0.9rem;
+  color: #bdc3c7;
+  font-style: italic;
+}
+
+.inventory-value[title] {
+  cursor: help;
+}
+
+.totals-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 1rem;
+  background-color: rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-small);
+  margin-top: 1rem;
+  font-weight: bold;
+  font-size: 1.1rem;
+}
+
+#inventory-total-value {
+  color: var(--success-color);
+}
+
 /* Responsive */
 @media (max-width: 1024px) {
   .main-layout {

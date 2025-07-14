@@ -245,44 +245,69 @@ const UIController = (() => {
     // Store inventory items
     MissionTracker.setInventoryItems(items);
     
-    // Fetch market prices if MarketAPI is available
+    // Fetch market prices using our new MarketAPI
     if (typeof MarketAPI !== 'undefined' && items.length > 0) {
       try {
-        showInfo(`Fetching market prices for ${items.length} items...`);
-        const priceMap = await MarketAPI.getBatchItemPrices(items);
+        showInfo(`Fetching Jita top 5% average prices for ${items.length} items...`);
         
         let pricesUpdated = 0;
+        let totalErrors = 0;
         
-        // Update items with market prices
-        items.forEach(item => {
-          if (priceMap[item.name] && priceMap[item.name] > 0) {
-            item.marketPrice = priceMap[item.name];
-            item.totalValue = item.marketPrice * item.quantity;
-            pricesUpdated++;
+        // Process items one by one to show progress
+        for (let i = 0; i < items.length; i++) {
+          const item = items[i];
+          
+          try {
+            // Update progress message
+            showInfo(`Fetching prices... ${i + 1}/${items.length} (${item.name})`);
             
-            // Update the UI for this item
+            const price = await MarketAPI.getItemPrice(item.name);
+            
+            if (price && price > 0) {
+              // Update item with market price
+              item.marketPrice = price;
+              item.totalValue = price * item.quantity;
+              pricesUpdated++;
+              
+              // Update the UI for this item
+              const valueElem = document.querySelector(`.inventory-value[data-item-id="${item.id}"]`);
+              if (valueElem) {
+                valueElem.textContent = formatISK(item.totalValue);
+                valueElem.style.color = '#2ecc71'; // Success color
+              }
+            }
+            
+          } catch (error) {
+            console.warn(`Failed to fetch price for ${item.name}:`, error.message);
+            totalErrors++;
+            
+            // Mark failed items in UI
             const valueElem = document.querySelector(`.inventory-value[data-item-id="${item.id}"]`);
             if (valueElem) {
-              valueElem.textContent = formatISK(item.totalValue);
+              valueElem.style.color = '#e74c3c'; // Error color
+              valueElem.title = `Price lookup failed: ${error.message}`;
             }
           }
-        });
+        }
         
-        // Update total value after price fetch
+        // Update total value after all price fetches
         updateInventoryTotal();
         
-        // Update stored items
-        MissionTracker.setInventoryItems(items);
-        
+        // Show final result
         if (pricesUpdated > 0) {
-          showSuccess(`Market prices updated for ${pricesUpdated} of ${items.length} items!`);
+          const successRate = Math.round((pricesUpdated / items.length) * 100);
+          showSuccess(`✅ Jita market prices updated for ${pricesUpdated}/${items.length} items (${successRate}% success rate)`);
         } else {
-          showWarning('No market prices found. Using estimated values.');
+          showWarning('⚠️ No market prices found. Check item names and try again.');
+        }
+        
+        if (totalErrors > 0) {
+          showInfo(`ℹ️ ${totalErrors} items failed price lookup - hover over red prices for details`);
         }
         
       } catch (error) {
-        console.warn('Market price fetch failed:', error);
-        showWarning('Failed to fetch market prices. Using estimated values.');
+        console.error('Market price batch fetch failed:', error);
+        showError('❌ Failed to fetch market prices. Please try again.');
       }
     }
   }

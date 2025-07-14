@@ -740,6 +740,22 @@ document.getElementById('inventory-paste').addEventListener('input', async (e) =
       UIController.showTab('missions');
     }
   });
+  
+  // Manual price refresh button
+  document.getElementById('refresh-prices-btn').addEventListener('click', async () => {
+    const inventoryItems = MissionTracker.getInventoryItems();
+    
+    if (!inventoryItems || inventoryItems.length === 0) {
+      UIController.showWarning('No inventory items to refresh prices for.');
+      return;
+    }
+    
+    // Clear cache to force fresh prices
+    MarketAPI.clearAllCaches();
+    
+    // Refresh the inventory display (which will fetch new prices)
+    await UIController.displayParsedInventory(inventoryItems);
+  });
 }
 
 /**

@@ -330,6 +330,10 @@
                 <textarea id="inventory-paste" placeholder="Paste inventory items here..."></textarea>
                 <div id="parsed-inventory" class="parsed-data hidden">
                     <h4>Detected Items</h4>
+                    <div class="inventory-controls">
+                        <button id="refresh-prices-btn" class="small-btn secondary-btn">🔄 Refresh Jita Prices</button>
+                        <span id="price-status" class="price-status"></span>
+                    </div>
                     <div id="inventory-list" class="data-list">
                         <!-- Will be populated dynamically -->
                     </div>
@@ -437,7 +441,7 @@
 
     <!-- App Footer -->
     <footer class="app-footer" style="text-align:center; padding: 1em 0; font-size: 0.95em; color: #888; background: #181a1b; border-top: 1px solid #333; margin-top:2em;">
-      <div>EVE Mission Tracker v1.0.1 &mdash; Created by Nesslow &mdash; <a href="https://github.com/Nesslow/eve-mission-ness" target="_blank" style="color:#6cf;">GitHub</a> &mdash; <a href="https://www.eveonline.com/" target="_blank" style="color:#6cf;">EVE Online</a><br>
+      <div>EVE Mission Tracker v1.0.2 &mdash; Created by Nesslow &mdash; <a href="https://github.com/Nesslow/eve-mission-ness" target="_blank" style="color:#6cf;">GitHub</a> &mdash; <a href="https://www.eveonline.com/" target="_blank" style="color:#6cf;">EVE Online</a><br>
       <span style="font-size:0.9em;">License: MIT</span>
       </div>
     </footer>

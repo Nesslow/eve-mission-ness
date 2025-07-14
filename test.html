@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EVE Market API Test</title>
+    <title>EVE Market API Test - Jita Top 5%</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -96,7 +96,9 @@
         <h1>EVE Market API Test</h1>
         
         <div class="info">
-            <strong>Info:</strong> This test uses only the ESI (EVE Swagger Interface) API to fetch current lowest sell prices in The Forge region (Jita area).
+            <strong>Pricing Method:</strong> Top 5% average sell price in Jita IV - Moon 4 - Caldari Navy Assembly Plant<br>
+            <strong>Station ID:</strong> 60003760<br>
+            <strong>Benefits:</strong> Filters out extreme outliers while maintaining realistic market pricing
         </div>
         
         <div class="input-group">
@@ -125,7 +127,7 @@
                 return;
             }
             
-            showResult('Looking up item price...', 'loading');
+            showResult('Looking up top 5% average price in Jita...', 'loading');
             getPriceBtn.disabled = true;
             
             try {
@@ -135,8 +137,13 @@
                 
                 showResult(
                     `<strong>${itemName}</strong><br>
-                    Lowest sell price in The Forge: <strong>${price.toLocaleString()} ISK</strong><br>
-                    <small>Lookup time: ${endTime - startTime}ms</small>`,
+                    <strong>Top 5% Average Price: ${price.toLocaleString()} ISK</strong><br>
+                    <br>
+                    <small>
+                    <strong>Location:</strong> Jita IV - Moon 4 - Caldari Navy Assembly Plant<br>
+                    <strong>Method:</strong> Average of lowest 5% of sell orders<br>
+                    <strong>Lookup time:</strong> ${endTime - startTime}ms
+                    </small>`,
                     'success'
                 );
                 
