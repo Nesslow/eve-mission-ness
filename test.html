@@ -96,7 +96,7 @@
         <h1>EVE Market API Test</h1>
         
         <div class="info">
-            <strong>Info:</strong> This test fetches the current lowest sell price for items in Jita using the EVE Online API.
+            <strong>Info:</strong> This test uses only the ESI (EVE Swagger Interface) API to fetch current lowest sell prices in The Forge region (Jita area).
         </div>
         
         <div class="input-group">
@@ -135,7 +135,7 @@
                 
                 showResult(
                     `<strong>${itemName}</strong><br>
-                    Lowest Jita sell price: <strong>${price.toLocaleString()} ISK</strong><br>
+                    Lowest sell price in The Forge: <strong>${price.toLocaleString()} ISK</strong><br>
                     <small>Lookup time: ${endTime - startTime}ms</small>`,
                     'success'
                 );

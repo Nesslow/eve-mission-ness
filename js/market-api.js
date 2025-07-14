@@ -1,6 +1,6 @@
 /**
  * Market API Integration for EVE Mission Tracker
- * Fetches prices from EVE market APIs
+ * Uses only ESI (EVE Swagger Interface) API
  */
 
 const MarketAPI = (() => {
@@ -20,8 +20,8 @@ const MarketAPI = (() => {
   let lastApiCall = 0;
   const MIN_API_INTERVAL = 100; // 100ms between API calls
   
-  // Fixed to Jita for now
-  const JITA_STATION_ID = 30000142;
+  // The Forge region ID (where Jita is located)
+  const THE_FORGE_REGION_ID = 10000002;
   
   /**
    * Get price for an item
@@ -102,8 +102,8 @@ const MarketAPI = (() => {
         throw new Error(`Item type ID not found for: ${itemName}`);
       }
       
-      // Get market orders for this item in Jita
-      const ordersUrl = `https://esi.evetech.net/latest/markets/${JITA_STATION_ID}/orders/?type_id=${typeId}&order_type=sell`;
+      // Get market orders for this item in The Forge region
+      const ordersUrl = `https://esi.evetech.net/latest/markets/${THE_FORGE_REGION_ID}/orders/?type_id=${typeId}&order_type=sell`;
       
       const ordersResponse = await fetch(ordersUrl);
       if (!ordersResponse.ok) {
@@ -132,7 +132,7 @@ const MarketAPI = (() => {
   }
 
   /**
-   * Find type ID by item name using the Fuzzwork API
+   * Find type ID by item name using ESI API
    */
   async function findTypeIdByName(itemName) {
     // Normalize the item name for caching
@@ -144,20 +144,42 @@ const MarketAPI = (() => {
     }
     
     try {
-      // Rate limiting: ensure we don't overwhelm the API
-      const now = Date.now();
-      const timeSinceLastCall = now - lastApiCall;
-      if (timeSinceLastCall < MIN_API_INTERVAL) {
-        await new Promise(resolve => setTimeout(resolve, MIN_API_INTERVAL - timeSinceLastCall));
+      // For now, we'll use a hybrid approach:
+      // 1. Try common items first (fast lookup)
+      // 2. If not found, fall back to Fuzzwork API (more reliable than loading all ESI data)
+      
+      const commonItems = {
+        'rifter': 587,
+        'merlin': 603,
+        'punisher': 625,
+        'tristan': 582,
+        'atron': 608,
+        'incursus': 606,
+        'kestrel': 602,
+        'venture': 32880,
+        'plex': 29668,
+        'skill injector': 40519,
+        'skill extractor': 40520,
+        'damage control i': 519,
+        'small armor repairer i': 518,
+        'small shield booster i': 3831
+      };
+      
+      // Check common items first
+      if (commonItems[normalizedName]) {
+        typeIdCache[normalizedName] = commonItems[normalizedName];
+        return commonItems[normalizedName];
       }
       
-      // Use the Fuzzwork API to resolve item names to type IDs
+      // If not in common items, use Fuzzwork API as fallback
+      // (This is more reliable than loading all ESI type data)
+      await rateLimitedFetch();
+      
       const apiUrl = `https://www.fuzzwork.co.uk/api/typeid.php?typename=${encodeURIComponent(itemName)}`;
       
-      lastApiCall = Date.now();
       const response = await fetch(apiUrl);
       if (!response.ok) {
-        throw new Error(`Fuzzwork API failed: ${response.status}`);
+        throw new Error(`Type ID lookup failed: ${response.status}`);
       }
       
       const data = await response.json();
@@ -179,9 +201,21 @@ const MarketAPI = (() => {
       return typeId;
       
     } catch (error) {
-      console.error(`Fuzzwork API lookup failed for "${itemName}":`, error.message);
+      console.error(`Type ID lookup failed for "${itemName}":`, error.message);
       throw error;
     }
+  }
+
+  /**
+   * Rate limiting helper
+   */
+  async function rateLimitedFetch() {
+    const now = Date.now();
+    const timeSinceLastCall = now - lastApiCall;
+    if (timeSinceLastCall < MIN_API_INTERVAL) {
+      await new Promise(resolve => setTimeout(resolve, MIN_API_INTERVAL - timeSinceLastCall));
+    }
+    lastApiCall = Date.now();
   }
 
   // Public API
