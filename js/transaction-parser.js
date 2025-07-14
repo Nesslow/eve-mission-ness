@@ -12,27 +12,31 @@ const TransactionParser = (() => {
    */
   function parse(text) {
     if (!text) return [];
-    
+
     const transactions = [];
     const lines = text.split('\n');
-    
+
     // Skip header lines if they exist (check if first line is header)
     const startLine = isHeaderLine(lines[0]) ? 1 : 0;
-    
+
     for (let i = startLine; i < lines.length; i++) {
       const line = lines[i].trim();
       if (!line) continue; // Skip empty lines
-      
+
       try {
         const transaction = parseLine(line);
         if (transaction) {
           transactions.push(transaction);
+          console.debug(`[TransactionParser] Parsed line:`, line, transaction);
+        } else {
+          console.debug(`[TransactionParser] No match for line:`, line);
         }
       } catch (error) {
         console.warn(`Failed to parse transaction line: ${line}`, error);
       }
     }
-    
+
+    console.debug(`[TransactionParser] Total parsed transactions:`, transactions.length);
     return transactions;
   }
 
@@ -55,47 +59,95 @@ const TransactionParser = (() => {
    */
   function parseLine(line) {
     // Try different formats
-    
-    // Format 1: Tab or multiple space separated
+
+    // Format 1: Tab or multiple space separated (robust)
+    // Date    Type    Amount    Balance    Description
+    // Example: 2025.07.13 18:22    Bounty Prizes    4.467.189 ISK    2.831.882.774 ISK    [r] ...
+    const pattern1 = /^(\d{4}[.\/-]\d{2}[.\/-]\d{2}(?:[ ]+\d{2}:\d{2})?)[ \t]+([^\t]+)[ \t]+([\d.,]+) ISK[ \t]+([\d.,]+) ISK[ \t]+(.+)$/;
+
+    // Format 2: Tab or multiple space separated (legacy, no time)
     // Date    Amount    From/To    Description
-    const pattern1 = /(\d{4}[-\.\/]\d{2}[-\.\/]\d{2})(?:[ \t]+)([\d,\.]+)(?:[ \t]+)([^\t]+)(?:[ \t]+)(.+)/;
-    
-    // Format 2: Comma separated
+    const pattern2 = /(\d{4}[-\./]\d{2}[-\./]\d{2})(?:[ \t]+)([\d,\.]+)(?:[ \t]+)([^\t]+)(?:[ \t]+)(.+)/;
+
+    // Format 3: Comma separated
     // Date, Amount, From/To, Description
-    const pattern2 = /(\d{4}[-\.\/]\d{2}[-\.\/]\d{2}),\s*([\d,\.]+),\s*([^,]+),\s*(.+)/;
-    
-    let match = line.match(pattern1) || line.match(pattern2);
-    
-    if (!match) return null;
-    
-    // Extract values
-    const dateStr = match[1];
-    const amountStr = match[2];
-    const fromTo = match[3].trim();
-    const description = match[4].trim();
-    
-    // Parse date to YYYY-MM-DD format
-    const date = parseDate(dateStr);
-    
-    // Parse amount (remove commas and convert to number)
-    const amount = parseAmount(amountStr);
-    
-    // Determine transaction type
-    const type = determineTransactionType(description, fromTo);
-    
-    // Determine if income (positive) or expense (negative)
-    const isIncome = determineIsIncome(description, fromTo);
-    
-    // Create transaction object
-    return {
-      id: `tx-${date}-${Math.random().toString(36).substr(2, 9)}`,
-      date: date,
-      amount: isIncome ? Math.abs(amount) : -Math.abs(amount),
-      description: description,
-      fromTo: fromTo,
-      type: type,
-      isSelected: shouldAutoSelect(type, description)
-    };
+    const pattern3 = /(\d{4}[-\./]\d{2}[-\./]\d{2}),\s*([\d,\.]+),\s*([^,]+),\s*(.+)/;
+
+    let match = line.match(pattern1);
+    if (match) {
+      // Newer EVE format with time, type, amount, balance, description
+      const dateStr = match[1];
+      const typeStr = match[2].trim();
+      const amountStr = match[3];
+      // const balanceStr = match[4]; // Not used
+      const description = match[5].trim();
+
+      const date = parseDate(dateStr);
+      const amount = parseAmount(amountStr);
+      const type = determineTransactionType(description, typeStr);
+      const isIncome = determineIsIncome(description, typeStr);
+
+      return {
+        id: `tx-${date}-${Math.random().toString(36).substr(2, 9)}`,
+        date: date,
+        amount: isIncome ? Math.abs(amount) : -Math.abs(amount),
+        description: description,
+        fromTo: typeStr,
+        type: type,
+        isSelected: shouldAutoSelect(type, description)
+      };
+    }
+
+    // Try legacy pattern2
+    match = line.match(pattern2);
+    if (match) {
+      const dateStr = match[1];
+      const amountStr = match[2];
+      const fromTo = match[3].trim();
+      const description = match[4].trim();
+
+      const date = parseDate(dateStr);
+      const amount = parseAmount(amountStr);
+      const type = determineTransactionType(description, fromTo);
+      const isIncome = determineIsIncome(description, fromTo);
+
+      return {
+        id: `tx-${date}-${Math.random().toString(36).substr(2, 9)}`,
+        date: date,
+        amount: isIncome ? Math.abs(amount) : -Math.abs(amount),
+        description: description,
+        fromTo: fromTo,
+        type: type,
+        isSelected: shouldAutoSelect(type, description)
+      };
+    }
+
+    // Try comma separated
+    match = line.match(pattern3);
+    if (match) {
+      const dateStr = match[1];
+      const amountStr = match[2];
+      const fromTo = match[3].trim();
+      const description = match[4].trim();
+
+      const date = parseDate(dateStr);
+      const amount = parseAmount(amountStr);
+      const type = determineTransactionType(description, fromTo);
+      const isIncome = determineIsIncome(description, fromTo);
+
+      return {
+        id: `tx-${date}-${Math.random().toString(36).substr(2, 9)}`,
+        date: date,
+        amount: isIncome ? Math.abs(amount) : -Math.abs(amount),
+        description: description,
+        fromTo: fromTo,
+        type: type,
+        isSelected: shouldAutoSelect(type, description)
+      };
+    }
+
+    // No match
+    return null;
   }
 
   /**
@@ -119,8 +171,18 @@ const TransactionParser = (() => {
    * Parse amount string to number
    */
   function parseAmount(amountStr) {
-    // Remove commas and spaces
-    const cleanAmount = amountStr.replace(/,|\s/g, '');
+    // Remove commas, periods (as thousands separators), and spaces
+    // If there is a decimal part, keep only the last period as decimal separator
+    let cleanAmount = amountStr.replace(/\s/g, '');
+    // If there is a comma, treat it as decimal separator (EU format)
+    if (cleanAmount.includes(',')) {
+      cleanAmount = cleanAmount.replace(/\./g, ''); // Remove all periods (thousands)
+      cleanAmount = cleanAmount.replace(/,/g, '.'); // Replace decimal comma with period
+    } else {
+      // No comma, so remove all periods (thousands separators)
+      cleanAmount = cleanAmount.replace(/\./g, '');
+    }
+    cleanAmount = cleanAmount.replace(/,/g, ''); // Remove any stray commas
     return parseFloat(cleanAmount) || 0;
   }
 

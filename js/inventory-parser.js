@@ -9,16 +9,16 @@ const InventoryParser = (() => {
    * Format is typically:
    * Item Name\tQuantity\t(optional estimated price)
    */
-  function parse(text) {
+  async function parse(text) {
     if (!text) return [];
-    
+
     const items = [];
     const lines = text.split('\n');
-    
+
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].trim();
       if (!line) continue; // Skip empty lines
-      
+
       try {
         const item = parseLine(line);
         if (item) {
@@ -28,7 +28,28 @@ const InventoryParser = (() => {
         console.warn(`Failed to parse inventory line: ${line}`, error);
       }
     }
-    
+
+    // Batch price lookup using EVEpraisal if available
+    if (typeof MarketAPI !== 'undefined' && items.length > 0) {
+      try {
+        const priceMap = await MarketAPI.getBatchItemPrices(items);
+        items.forEach(item => {
+          if (priceMap[item.name]) {
+            item.marketPrice = priceMap[item.name];
+            item.totalValue = item.marketPrice * item.quantity;
+            // Update the UI for this item if it is displayed
+            const valueElem = document.querySelector(`.inventory-value[data-item-id="${item.id}"]`);
+            if (valueElem) {
+              valueElem.textContent = UIController.formatISK(item.totalValue);
+            }
+          }
+        });
+        UIController.updateInventoryTotal();
+      } catch (error) {
+        console.warn('Batch price lookup failed:', error);
+      }
+    }
+
     return items;
   }
 
@@ -82,11 +103,17 @@ const InventoryParser = (() => {
     if (typeof MarketAPI !== 'undefined') {
       MarketAPI.getItemPrice(name)
         .then(price => {
+          console.debug(`[InventoryParser] Market price for ${name}:`, price);
           if (price) {
             item.marketPrice = price;
             item.totalValue = price * quantity;
-            
-            // Update total if this item is displayed
+
+            // Update the UI for this item if it is displayed
+            const valueElem = document.querySelector(`.inventory-value[data-item-id="${item.id}"]`);
+            if (valueElem) {
+              valueElem.textContent = UIController.formatISK(item.totalValue);
+            }
+            // Update total value
             UIController.updateInventoryTotal();
           }
         })

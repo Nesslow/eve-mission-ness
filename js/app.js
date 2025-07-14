@@ -523,19 +523,18 @@ function setupEventListeners() {
   });
   
   // Inventory paste handling
-  document.getElementById('inventory-paste').addEventListener('input', (e) => {
-    const text = e.target.value;
-    if (text.trim()) {
-      const parsedInventory = InventoryParser.parse(text);
-      UIController.displayParsedInventory(parsedInventory);
-      
-      // Enable next button if we have items
-      document.getElementById('inv-next-btn').disabled = parsedInventory.length === 0;
-    } else {
-      document.getElementById('inv-next-btn').disabled = true;
-      document.getElementById('parsed-inventory').classList.add('hidden');
-    }
-  });
+document.getElementById('inventory-paste').addEventListener('input', async (e) => {
+  const text = e.target.value;
+  if (text.trim()) {
+    const parsedInventory = await InventoryParser.parse(text);
+    UIController.displayParsedInventory(parsedInventory);
+    // Enable next button if we have items
+    document.getElementById('inv-next-btn').disabled = parsedInventory.length === 0;
+  } else {
+    document.getElementById('inv-next-btn').disabled = true;
+    document.getElementById('parsed-inventory').classList.add('hidden');
+  }
+});
   
   // Step navigation in complete mission modal
   document.getElementById('tx-next-btn').addEventListener('click', () => {
