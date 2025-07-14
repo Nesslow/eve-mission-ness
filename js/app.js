@@ -440,6 +440,9 @@ function setupEventListeners() {
   document.getElementById('end-mission-btn').addEventListener('click', async () => {
     const activeMission = await MissionTracker.getActiveMission();
     if (activeMission) {
+      // Stop the timer immediately when completing a mission
+      MissionTracker.stopTimer();
+      
       document.getElementById('complete-mission-name').textContent = activeMission.missionName;
       UIController.showModal('complete-mission-modal');
       UIController.resetCompleteMissionSteps();
@@ -496,6 +499,10 @@ function setupEventListeners() {
       
       // Enable next button if we have transactions
       document.getElementById('tx-next-btn').disabled = parsedTransactions.length === 0;
+      
+      // Debug output to help identify issues
+      console.log(`Parsed ${parsedTransactions.length} transactions`);
+      console.log(`Next button disabled: ${document.getElementById('tx-next-btn').disabled}`);
     } else {
       document.getElementById('tx-next-btn').disabled = true;
       document.getElementById('parsed-transactions').classList.add('hidden');

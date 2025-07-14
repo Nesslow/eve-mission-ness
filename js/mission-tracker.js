@@ -296,6 +296,7 @@ const MissionTracker = (() => {
     completeMission,
     getActiveMission,
     startTimerUI,
+    stopTimer,
     setSelectedTransactions,
     setInventoryItems,
     getCurrentDuration

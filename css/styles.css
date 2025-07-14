@@ -238,7 +238,7 @@ h4 {
 }
 
 #mission-search, #template-search {
-  flex: 1;
+  flex: auto;
   padding: 0.5rem;
   border-radius: var(--radius-small);
   border: 1px solid var(--border-color);
