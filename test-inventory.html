@@ -19,6 +19,67 @@
             border-radius: 8px;
             margin-bottom: 20px;
         }
+        .test-controls {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #333;
+            border-radius: 6px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .control-group label {
+            font-weight: bold;
+            color: #bdc3c7;
+        }
+        .control-group select {
+            background: #444;
+            color: #fff;
+            border: 1px solid #555;
+            padding: 5px 10px;
+            border-radius: 4px;
+            min-width: 120px;
+        }
+        .test-btn {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .test-btn:hover {
+            background: #2980b9;
+        }
+        .test-btn:active {
+            background: #21618c;
+        }
+        .test-info {
+            margin-top: 20px;
+            padding: 15px;
+            background: #333;
+            border-radius: 6px;
+            border-left: 4px solid #3498db;
+        }
+        .test-info h4 {
+            margin-top: 0;
+            color: #3498db;
+        }
+        .test-info p {
+            margin: 5px 0;
+            color: #bdc3c7;
+        }
+        .test-info span {
+            color: #fff;
+            font-weight: bold;
+        }
         textarea {
             width: 100%;
             height: 100px;
@@ -65,6 +126,35 @@
 <body>
     <div class="test-container">
         <h1>Test Inventory Price Fetching</h1>
+        
+        <div class="test-controls">
+            <div class="control-group">
+                <label for="test-price-hub">Price Hub:</label>
+                <select id="test-price-hub">
+                    <option value="jita">Jita</option>
+                    <option value="amarr">Amarr</option>
+                    <option value="dodixie">Dodixie</option>
+                    <option value="hek">Hek</option>
+                    <option value="rens">Rens</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <label for="test-pricing-strategy">Pricing Strategy:</label>
+                <select id="test-pricing-strategy">
+                    <option value="estimation">Smart Estimation (Recommended)</option>
+                    <option value="api">Try API + Fallback</option>
+                    <option value="conservative">Conservative Estimates</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <button id="refresh-prices" class="test-btn">Refresh Prices</button>
+                <button id="clear-inventory" class="test-btn">Clear</button>
+                <button id="load-sample" class="test-btn">Load Sample</button>
+            </div>
+        </div>
+        
         <h3>Instructions:</h3>
         <p>1. Go to EVE Online</p>
         <p>2. Open your inventory</p>
@@ -87,14 +177,24 @@
         </div>
         
         <div id="status"></div>
+        
+        <div class="test-info">
+            <h4>Test Information</h4>
+            <div id="test-details">
+                <p><strong>Current Hub:</strong> <span id="current-hub">Jita</span></p>
+                <p><strong>Strategy:</strong> <span id="current-strategy">Smart Estimation</span></p>
+                <p><strong>Items Processed:</strong> <span id="items-count">0</span></p>
+            </div>
+        </div>
     </div>
 
     <script>
         // Mock the missing dependencies
         const missionDB = {
             getSetting: async (key) => {
-                if (key === 'price-hub') return 'jita';
+                if (key === 'price-hub') return document.getElementById('test-price-hub').value || 'jita';
                 if (key === 'refresh-prices-on-load') return true;
+                if (key === 'pricing-strategy') return document.getElementById('test-pricing-strategy').value || 'estimation';
                 return null;
             }
         };
@@ -104,6 +204,9 @@
                 console.log('Setting inventory items:', items);
             }
         };
+        
+        // Global variable to store current inventory items
+        let currentInventoryItems = [];
         
         function showInfo(message) {
             document.getElementById('status').innerHTML = `<div style="color: #3498db;">${message}</div>`;
@@ -115,6 +218,91 @@
         
         function showWarning(message) {
             document.getElementById('status').innerHTML = `<div style="color: #f39c12;">${message}</div>`;
+        }
+        
+        function showError(message) {
+            document.getElementById('status').innerHTML = `<div style="color: #e74c3c;">${message}</div>`;
+        }
+        
+        // Helper function to update pricing strategy
+        function updatePricingStrategy() {
+            const strategy = document.getElementById('test-pricing-strategy').value;
+            const hub = document.getElementById('test-price-hub').value;
+            
+            // Update the market API hub
+            if (typeof MarketAPI !== 'undefined') {
+                MarketAPI.setPriceHub(hub);
+            }
+            
+            // Update display
+            document.getElementById('current-hub').textContent = hub.charAt(0).toUpperCase() + hub.slice(1);
+            const strategyNames = {
+                'estimation': 'Smart Estimation',
+                'api': 'Try API + Fallback',
+                'conservative': 'Conservative Estimates'
+            };
+            document.getElementById('current-strategy').textContent = strategyNames[strategy] || strategy;
+            
+            showInfo(`Settings updated: ${hub.toUpperCase()} hub, ${strategyNames[strategy] || strategy} strategy`);
+        }
+        
+        // Helper function to refresh prices for current inventory
+        async function refreshInventoryPrices() {
+            if (currentInventoryItems.length === 0) {
+                showWarning('No inventory items to refresh. Please paste some items first.');
+                return;
+            }
+            
+            try {
+                showInfo('Refreshing prices...');
+                await UIController.displayParsedInventory(currentInventoryItems);
+                updateItemsCount();
+            } catch (error) {
+                console.error('Error refreshing prices:', error);
+                showError('Failed to refresh prices: ' + error.message);
+            }
+        }
+        
+        // Helper function to clear inventory
+        function clearInventory() {
+            document.getElementById('inventory-paste').value = '';
+            document.getElementById('parsed-inventory').classList.add('hidden');
+            document.getElementById('status').innerHTML = '';
+            currentInventoryItems = [];
+            updateItemsCount();
+            showInfo('Inventory cleared');
+        }
+        
+        // Helper function to update items count
+        function updateItemsCount() {
+            document.getElementById('items-count').textContent = currentInventoryItems.length;
+        }
+        
+        // Helper function to load sample inventory data
+        function loadSampleInventory() {
+            const sampleData = `Large Compact Pb-Acid Cap Battery	1
+Experimental Enduring Thermal Armor Hardener I	1
+800mm Crystalline Carbonide Restrained Plates	1
+400mm Rolled Tungsten Compact Plates	1
+Experimental Enduring Explosive Armor Hardener I	1
+Large 'Hope' Hull Reconstructor I	1
+Limited Light Neutron Blaster I	4
+Anode Light Electron Particle Cannon I	2
+Large Inefficient Hull Repair Unit	1
+Salvager I	1
+Prototype Cloaking Device I	1
+Small Armor Repairer I	1
+Damage Control II	1
+Antimatter Charge S	500
+Plutonium Charge S	200`;
+            
+            document.getElementById('inventory-paste').value = sampleData;
+            
+            // Trigger the input event to process the sample data
+            const event = new Event('input', { bubbles: true });
+            document.getElementById('inventory-paste').dispatchEvent(event);
+            
+            showInfo('Sample inventory data loaded!');
         }
     </script>
     
@@ -134,15 +322,34 @@
                 if (text.trim()) {
                     try {
                         const parsedInventory = await InventoryParser.parse(text);
+                        currentInventoryItems = parsedInventory; // Store for refresh functionality
+                        updateItemsCount();
                         UIController.displayParsedInventory(parsedInventory);
                     } catch (error) {
                         console.error('Error parsing inventory:', error);
-                        document.getElementById('status').innerHTML = `<div style="color: #e74c3c;">Error: ${error.message}</div>`;
+                        showError('Error: ' + error.message);
                     }
                 } else {
                     document.getElementById('parsed-inventory').classList.add('hidden');
+                    currentInventoryItems = [];
+                    updateItemsCount();
                 }
             });
+            
+            // Set up control event listeners
+            document.getElementById('test-price-hub').addEventListener('change', updatePricingStrategy);
+            document.getElementById('test-pricing-strategy').addEventListener('change', updatePricingStrategy);
+            document.getElementById('refresh-prices').addEventListener('click', refreshInventoryPrices);
+            document.getElementById('clear-inventory').addEventListener('click', clearInventory);
+            document.getElementById('load-sample').addEventListener('click', loadSampleInventory);
+            
+            // Initialize with default settings
+            updatePricingStrategy();
+            
+            showInfo('Test page ready! Configure your settings and paste inventory items.');
+        }).catch(error => {
+            console.error('Failed to initialize Market API:', error);
+            showError('Failed to initialize Market API: ' + error.message);
         });
     </script>
 </body>
