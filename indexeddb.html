@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>EVE Mission Tracker - DB Admin</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 24px; background: #181a1b; color: #eee; }
+        .container { max-width: 900px; margin: auto; }
+        h1 { font-size: 1.7em; margin-bottom: 0.5em; }
+        button { margin: 0.5em 0.5em 0.5em 0; padding: 0.5em 1.2em; font-size: 1em; }
+        textarea { width: 100%; min-height: 120px; background: #23272a; color: #eee; border: 1px solid #444; padding: 8px; }
+        pre { background: #23272a; color: #eee; padding: 12px; border-radius: 4px; overflow-x: auto; }
+        .section { margin-bottom: 2em; }
+        .label { font-weight: bold; margin-top: 1em; display: block; }
+        .error { color: #ff6b6b; }
+        .success { color: #51fa7b; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>EVE Mission Tracker - DB Admin</h1>
+        <div class="section">
+            <button id="refreshBtn">Refresh View</button>
+            <button id="exportBtn">Export DB</button>
+            <button id="importBtn">Import DB</button>
+            <input type="file" id="importFile" style="display:none" accept="application/json">
+            <span id="status"></span>
+        </div>
+        <div class="section">
+            <span class="label">Missions</span>
+            <pre id="missionsView">Loading...</pre>
+        </div>
+        <div class="section">
+            <span class="label">Mission Templates</span>
+            <pre id="templatesView">Loading...</pre>
+        </div>
+        <div class="section">
+            <span class="label">Settings</span>
+            <pre id="settingsView">Loading...</pre>
+        </div>
+    </div>
+    <script src="js/db.js"></script>
+    <script>
+        const missionsView = document.getElementById('missionsView');
+        const templatesView = document.getElementById('templatesView');
+        const settingsView = document.getElementById('settingsView');
+        const refreshBtn = document.getElementById('refreshBtn');
+        const exportBtn = document.getElementById('exportBtn');
+        const importBtn = document.getElementById('importBtn');
+        const importFile = document.getElementById('importFile');
+        const status = document.getElementById('status');
+
+        async function refreshViews() {
+            status.textContent = '';
+            missionsView.textContent = 'Loading...';
+            templatesView.textContent = 'Loading...';
+            settingsView.textContent = 'Loading...';
+            try {
+                const missions = await missionDB.getAllMissions();
+                missionsView.textContent = JSON.stringify(missions, null, 2);
+
+                const templates = await missionDB.getAllTemplates();
+                templatesView.textContent = JSON.stringify(templates, null, 2);
+
+                // Show all settings
+                const settingKeys = ['defaultPriceHub', 'refreshPricesOnLoad', 'defaultExpenses', 'activeShip'];
+                const settings = {};
+                for (const key of settingKeys) {
+                    settings[key] = await missionDB.getSetting(key);
+                }
+                settingsView.textContent = JSON.stringify(settings, null, 2);
+            } catch (err) {
+                status.textContent = 'Error loading DB: ' + err;
+                status.className = 'error';
+            }
+        }
+
+        refreshBtn.onclick = refreshViews;
+
+        exportBtn.onclick = async () => {
+            status.textContent = '';
+            try {
+                const data = await missionDB.exportData();
+                const json = JSON.stringify(data, null, 2);
+                const blob = new Blob([json], { type: "application/json" });
+                const url = URL.createObjectURL(blob);
+
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'eve_missions_backup.json';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+
+                status.textContent = 'Exported successfully!';
+                status.className = 'success';
+            } catch (err) {
+                status.textContent = 'Export failed: ' + err;
+                status.className = 'error';
+            }
+        };
+
+        importBtn.onclick = () => {
+            importFile.value = '';
+            importFile.click();
+        };
+
+        importFile.onchange = async (e) => {
+            status.textContent = '';
+            const file = e.target.files[0];
+            if (!file) return;
+            try {
+                const text = await file.text();
+                const data = JSON.parse(text);
+                const ok = await missionDB.importData(data);
+                if (ok) {
+                    status.textContent = 'Import successful!';
+                    status.className = 'success';
+                    await refreshViews();
+                } else {
+                    status.textContent = 'Import failed!';
+                    status.className = 'error';
+                }
+            } catch (err) {
+                status.textContent = 'Import error: ' + err;
+                status.className = 'error';
+            }
+        };
+
+        // Initial load
+        refreshViews();
+    </script>

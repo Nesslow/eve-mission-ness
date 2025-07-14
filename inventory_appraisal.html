@@ -32,7 +32,7 @@
             font-weight: bold;
             color: #555;
         }
-        input[type="text"] {
+        input[type="text"], textarea {
             width: 100%;
             padding: 10px;
             border: 2px solid #ddd;
@@ -40,7 +40,7 @@
             font-size: 16px;
             box-sizing: border-box;
         }
-        input[type="text"]:focus {
+        input[type="text"]:focus, textarea:focus {
             outline: none;
             border-color: #4CAF50;
         }
@@ -65,7 +65,11 @@
             margin-top: 20px;
             padding: 15px;
             border-radius: 4px;
-            font-size: 16px;
+            font-size: 12px;
+        }
+        .result > ul {
+            list-style: none;
+            padding-inline-start: 10px;
         }
         .success {
             background-color: #d4edda;
@@ -97,78 +101,89 @@
         
         <div class="info">
             <strong>Pricing Method:</strong> Top 5% average sell price in Jita IV - Moon 4 - Caldari Navy Assembly Plant<br>
-            <strong>Station ID:</strong> 60003760<br>
-            <strong>Benefits:</strong> Filters out extreme outliers while maintaining realistic market pricing
         </div>
         
         <div class="input-group">
-            <label for="itemName">Item Name:</label>
-            <input type="text" id="itemName" placeholder="Enter item name (e.g., Rifter)" value="Rifter">
+            <label for="itemInput">Paste Inventory:</label>
+            <textarea id="itemInput" rows="8"></textarea>
         </div>
         
-        <button id="getPriceBtn">Get Price</button>
-        <button id="clearCacheBtn">Clear Cache</button>
+        <button id="getPricesBtn">Get Prices</button>
         
         <div id="result"></div>
     </div>
 
     <script src="js/market-api.js"></script>
     <script>
-        const itemNameInput = document.getElementById('itemName');
-        const getPriceBtn = document.getElementById('getPriceBtn');
-        const clearCacheBtn = document.getElementById('clearCacheBtn');
+        const itemInput = document.getElementById('itemInput');
+        const getPricesBtn = document.getElementById('getPricesBtn');
         const resultDiv = document.getElementById('result');
-        
-        getPriceBtn.addEventListener('click', async () => {
-            const itemName = itemNameInput.value.trim();
-            
-            if (!itemName) {
-                showResult('Please enter an item name.', 'error');
+
+        getPricesBtn.addEventListener('click', async () => {
+            const lines = itemInput.value.split('\n').map(l => l.trim()).filter(Boolean);
+            if (lines.length === 0) {
+                showResult('Please enter at least one item.', 'error');
                 return;
             }
-            
-            showResult('Looking up top 5% average price in Jita...', 'loading');
-            getPriceBtn.disabled = true;
-            
+
+            // Parse each line as "item name<TAB>quantity"
+            const items = [];
+            for (const line of lines) {
+                const parts = line.split('\t');
+                if (parts.length < 2) continue;
+                const name = parts[0].trim();
+                const quantity = parseInt(parts[1].replace(/,/g, '')) || 1;
+                if (name) items.push({ name, quantity });
+            }
+
+            if (items.length === 0) {
+                showResult('No valid items found. Please use tab-separated item name and quantity.', 'error');
+                return;
+            }
+
+            showResult('Looking up top 5% average prices in Jita...', 'loading');
+            getPricesBtn.disabled = true;
+
             try {
                 const startTime = Date.now();
-                const price = await MarketAPI.getItemPrice(itemName);
+                const results = await MarketAPI.getBatchItemPrices(items);
                 const endTime = Date.now();
-                
-                showResult(
-                    `<strong>${itemName}</strong><br>
-                    <strong>Top 5% Average Price: ${price.toLocaleString()} ISK</strong><br>
-                    <br>
+
+                let html = `<strong>Results (${results.length} items):</strong><br><ul>`;
+                let grandTotal = 0;
+                results.forEach(r => {
+                    if (r.success) {
+                        const total = r.unitPrice * (r.quantity || 1);
+                        grandTotal += total;
+                        html += `<li><strong>${r.name}</strong> x${r.quantity || 1}: ${r.unitPrice.toLocaleString()} ISK each, <strong>${total.toLocaleString()} ISK total</strong></li>`;
+                    } else {
+                        html += `<li><strong>${r.name}</strong>: <span style="color:#721c24;">Error: ${r.error}</span></li>`;
+                    }
+                });
+                html += `</ul>
+                    <div style="margin-bottom:4px;"><strong>Total value:</strong> ${grandTotal.toLocaleString()} ISK</div>
                     <small>
-                    <strong>Location:</strong> Jita IV - Moon 4 - Caldari Navy Assembly Plant<br>
-                    <strong>Method:</strong> Average of lowest 5% of sell orders<br>
                     <strong>Lookup time:</strong> ${endTime - startTime}ms
-                    </small>`,
-                    'success'
-                );
-                
+                    </small>`;
+
+                showResult(html, 'success');
             } catch (error) {
                 showResult(
                     `<strong>Error:</strong> ${error.message}`,
                     'error'
                 );
             } finally {
-                getPriceBtn.disabled = false;
+                getPricesBtn.disabled = false;
             }
         });
-        
-        clearCacheBtn.addEventListener('click', () => {
-            MarketAPI.clearAllCaches();
-            showResult('Cache cleared successfully.', 'success');
-        });
-        
-        // Allow Enter key to trigger price lookup
-        itemNameInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                getPriceBtn.click();
+
+        // Allow Enter+Ctrl to trigger price lookup
+        itemInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && e.ctrlKey) {
+                getPricesBtn.click();
             }
         });
-        
+
         function showResult(message, type) {
             resultDiv.innerHTML = message;
             resultDiv.className = `result ${type}`;

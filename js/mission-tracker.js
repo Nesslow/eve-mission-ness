@@ -13,6 +13,9 @@ const MissionTracker = (() => {
   let selectedTransactions = [];
   let inventoryItems = [];
 
+  // Store bounties and inventory
+  let bounties = [];
+
   /**
    * Start a new mission
    */
@@ -96,7 +99,7 @@ const MissionTracker = (() => {
     };
     
     // Add additional notes
-    const finalNotes = document.getElementById('final-notes').value;
+    const finalNotes = document.getElementById('active-mission-notes').value;
     if (finalNotes) {
       activeMission.notes = activeMission.notes 
         ? `${activeMission.notes}\n\n${finalNotes}`
@@ -290,6 +293,20 @@ const MissionTracker = (() => {
     return { hours, minutes, seconds };
   }
 
+  /**
+   * Set bounties for the current mission
+   */
+  function setBounties(bountyData) {
+    bounties = bountyData;
+  }
+
+  /**
+   * Get bounties for the current mission
+   */
+  function getBounties() {
+    return bounties;
+  }
+
   // Public API
   return {
     startMission,
@@ -299,6 +316,8 @@ const MissionTracker = (() => {
     stopTimer,
     setSelectedTransactions,
     setInventoryItems,
-    getCurrentDuration
+    getCurrentDuration,
+    setBounties,
+    getBounties
   };
 })();
