@@ -657,18 +657,11 @@ const UIController = (() => {
    */
   async function loadSettings() {
     try {
-      // Load price hub setting
-      const priceHub = await missionDB.getSetting('price-hub');
-      if (priceHub) {
-        document.getElementById('price-hub').value = priceHub;
-      }
-      
       // Load refresh prices setting
       const refreshPrices = await missionDB.getSetting('refresh-prices-on-load');
       if (refreshPrices !== null && refreshPrices !== undefined) {
         document.getElementById('refresh-prices').checked = refreshPrices;
       }
-      
       // Load default expenses
       loadDefaultExpenses();
     } catch (error) {

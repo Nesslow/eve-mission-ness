@@ -665,11 +665,10 @@ document.getElementById('inventory-paste').addEventListener('input', async (e) =
   });
   
   // Save settings
-  document.querySelectorAll('#price-hub, #refresh-prices').forEach(setting => {
+  document.querySelectorAll('#refresh-prices').forEach(setting => {
     setting.addEventListener('change', async (e) => {
       const id = e.target.id;
       const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
-      
       try {
         await missionDB.setSetting(id, value);
         UIController.showSuccess('Settings saved.');

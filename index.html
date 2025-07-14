@@ -152,30 +152,13 @@
                 <div id="settings" class="tab-content">
                     <h2>Settings</h2>
                     <div class="settings-group">
-                        <h3>Market Settings</h3>
-                        <div class="setting-row">
-                            <label for="price-hub">Default Price Hub:</label>
-                            <select id="price-hub">
-                                <option value="jita">Jita</option>
-                                <option value="amarr">Amarr</option>
-                                <option value="dodixie">Dodixie</option>
-                                <option value="hek">Hek</option>
-                            </select>
-                        </div>
+                        <h3>Market Appraisal</h3>
                         <div class="setting-row">
                             <label for="refresh-prices">Refresh Prices on Load:</label>
                             <input type="checkbox" id="refresh-prices" checked>
                         </div>
-                        <div class="setting-row">
-                            <label for="pricing-strategy">Pricing Strategy:</label>
-                            <select id="pricing-strategy">
-                                <option value="estimation">Smart Estimation (Recommended)</option>
-                                <option value="api">Try API + Fallback</option>
-                                <option value="conservative">Conservative Estimates</option>
-                            </select>
-                        </div>
                         <div class="setting-note">
-                            <p><strong>Note:</strong> Due to CORS restrictions, direct API calls may not work from GitHub Pages. Smart Estimation provides reliable price estimates based on item types.</p>
+                            <p><strong>All market prices are appraised using the top 5% average sell price in <br>Jita IV - Moon 4 - Caldari Navy Assembly Plant.</strong></p>
                         </div>
                     </div>
                     

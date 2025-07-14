@@ -270,10 +270,24 @@ const MarketAPI = (() => {
     lastApiCall = Date.now();
   }
 
+  /**
+   * Initialize the market API
+   */
+  async function init() {
+    try {
+      console.log('Market API initialized - Using Jita top 5% average pricing');
+      return true;
+    } catch (error) {
+      console.error('Error initializing market API:', error);
+      return false;
+    }
+  }
+
   // Public API
   return {
     getItemPrice,
     getBatchItemPrices,
-    clearAllCaches
+    clearAllCaches,
+    init
   };
 })();
