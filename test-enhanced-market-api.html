@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Market API Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .test-item {
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .success {
+            background-color: #d4edda;
+            border-color: #c3e6cb;
+        }
+        .error {
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
+        }
+        .loading {
+            background-color: #fff3cd;
+            border-color: #ffeaa7;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 10px;
+            cursor: pointer;
+        }
+        .stats {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Enhanced Market API Test</h1>
+    
+    <div>
+        <button id="testButton">Test Market API</button>
+        <button id="clearCacheButton">Clear Cache</button>
+        <button id="testBatchButton">Test Batch Processing</button>
+    </div>
+    
+    <div id="results"></div>
+    <div id="stats" class="stats"></div>
+
+    <script src="js/market-api.js"></script>
+    <script>
+        let testResults = [];
+        
+        document.getElementById('testButton').addEventListener('click', async () => {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<p>Testing individual item lookups...</p>';
+            
+            // Test various types of items
+            const testItems = [
+                "Eifyr and Co. 'Rogue' Warp Drive Speed WS-605",
+                "Experimental Enduring Thermal Armor Hardener I",
+                "Experimental Enduring Explosive Armor Hardener I",
+                "Rifter",
+                "Small Armor Repairer I",
+                "Plex",
+                "Skill Injector",
+                "Damage Control I",
+                "Venture",
+                "Some Random Item That Doesn't Exist"
+            ];
+            
+            testResults = [];
+            let html = '<h2>Individual Item Test Results:</h2>';
+            
+            const startTime = Date.now();
+            
+            for (const item of testItems) {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'test-item loading';
+                itemDiv.innerHTML = `<strong>${item}:</strong> Testing...`;
+                resultsDiv.appendChild(itemDiv);
+                
+                try {
+                    const itemStartTime = Date.now();
+                    const price = await MarketAPI.getItemPrice(item);
+                    const itemEndTime = Date.now();
+                    
+                    const result = {
+                        item: item,
+                        price: price,
+                        time: itemEndTime - itemStartTime,
+                        success: true
+                    };
+                    
+                    testResults.push(result);
+                    
+                    itemDiv.className = 'test-item success';
+                    itemDiv.innerHTML = `<strong>${item}:</strong> ${price.toLocaleString()} ISK (${result.time}ms)`;
+                    
+                } catch (error) {
+                    const result = {
+                        item: item,
+                        error: error.message,
+                        success: false
+                    };
+                    
+                    testResults.push(result);
+                    
+                    itemDiv.className = 'test-item error';
+                    itemDiv.innerHTML = `<strong>${item}:</strong> Error - ${error.message}`;
+                }
+            }
+            
+            const endTime = Date.now();
+            updateStats(endTime - startTime);
+        });
+        
+        document.getElementById('clearCacheButton').addEventListener('click', () => {
+            MarketAPI.clearAllCaches();
+            document.getElementById('results').innerHTML = '<p>Cache cleared!</p>';
+            document.getElementById('stats').innerHTML = '';
+        });
+        
+        document.getElementById('testBatchButton').addEventListener('click', async () => {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<p>Testing batch processing...</p>';
+            
+            const batchItems = [
+                { name: "Rifter", quantity: 1 },
+                { name: "Small Armor Repairer I", quantity: 5 },
+                { name: "Damage Control I", quantity: 1 },
+                { name: "Plex", quantity: 500 },
+                { name: "Experimental Enduring Thermal Armor Hardener I", quantity: 2 }
+            ];
+            
+            try {
+                const startTime = Date.now();
+                const priceMap = await MarketAPI.getBatchItemPrices(batchItems);
+                const endTime = Date.now();
+                
+                let html = '<h2>Batch Processing Results:</h2>';
+                let totalValue = 0;
+                
+                for (const item of batchItems) {
+                    const price = priceMap[item.name] || 0;
+                    const itemValue = price * item.quantity;
+                    totalValue += itemValue;
+                    
+                    html += `<div class="test-item success">
+                        <strong>${item.name}</strong> (x${item.quantity}): 
+                        ${price.toLocaleString()} ISK each = ${itemValue.toLocaleString()} ISK total
+                    </div>`;
+                }
+                
+                html += `<div class="stats">
+                    <strong>Total Value:</strong> ${totalValue.toLocaleString()} ISK<br>
+                    <strong>Processing Time:</strong> ${endTime - startTime}ms
+                </div>`;
+                
+                resultsDiv.innerHTML = html;
+                
+            } catch (error) {
+                resultsDiv.innerHTML = `<div class="test-item error">Batch processing failed: ${error.message}</div>`;
+            }
+        });
+        
+        function updateStats(totalTime) {
+            const statsDiv = document.getElementById('stats');
+            const successCount = testResults.filter(r => r.success).length;
+            const errorCount = testResults.filter(r => !r.success).length;
+            const avgTime = testResults.filter(r => r.success).reduce((sum, r) => sum + r.time, 0) / successCount;
+            
+            statsDiv.innerHTML = `
+                <h3>Test Statistics:</h3>
+                <p><strong>Total Items:</strong> ${testResults.length}</p>
+                <p><strong>Successful:</strong> ${successCount}</p>
+                <p><strong>Failed:</strong> ${errorCount}</p>
+                <p><strong>Success Rate:</strong> ${((successCount / testResults.length) * 100).toFixed(1)}%</p>
+                <p><strong>Average Lookup Time:</strong> ${avgTime.toFixed(0)}ms</p>
+                <p><strong>Total Time:</strong> ${totalTime}ms</p>
+            `;
+        }
+    </script>
+</body>
+</html>

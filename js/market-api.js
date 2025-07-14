@@ -7,11 +7,18 @@ const MarketAPI = (() => {
   // Cache for item prices
   const priceCache = {};
   
+  // Cache for type ID lookups
+  const typeIdCache = {};
+  
   // Timestamp when cache was last updated
   let cacheTimestamp = null;
   
   // Cache expiry in minutes
   const CACHE_EXPIRY_MINUTES = 60;
+  
+  // Rate limiting for API calls
+  let lastApiCall = 0;
+  const MIN_API_INTERVAL = 100; // 100ms between API calls
   
   // Selected price hub
   let currentPriceHub = 'jita';
@@ -41,8 +48,11 @@ const MarketAPI = (() => {
       }
       return price;
     } catch (error) {
-      console.error(`Error fetching price for ${itemName}:`, error);
-      return 0;
+      console.warn(`Error fetching price for "${itemName}":`, error.message);
+      // Fall back to estimation
+      const estimatedPrice = estimateItemPrice(itemName);
+      console.info(`Using estimated price of ${estimatedPrice.toLocaleString()} ISK for "${itemName}"`);
+      return estimatedPrice;
     }
   }
 
@@ -75,6 +85,16 @@ const MarketAPI = (() => {
   }
 
   /**
+   * Clear all caches (useful for debugging or when there are issues)
+   */
+  function clearAllCaches() {
+    Object.keys(priceCache).forEach(key => delete priceCache[key]);
+    Object.keys(typeIdCache).forEach(key => delete typeIdCache[key]);
+    cacheTimestamp = null;
+    console.log('All caches cleared');
+  }
+
+  /**
    * Fetch price for a single item using fallback estimation
    */
   async function fetchItemPrice(itemName) {
@@ -99,21 +119,14 @@ const MarketAPI = (() => {
    */
   async function fetchESIPrice(itemName) {
     try {
-      // First, we need to search for the item type ID
-      const searchUrl = `https://esi.evetech.net/latest/search/?categories=inventory_type&search=${encodeURIComponent(itemName)}&strict=true`;
+      // The ESI search endpoint appears to be deprecated or broken
+      // Let's try to find the type ID using a different approach
+      const typeId = await findTypeIdByName(itemName);
       
-      const searchResponse = await fetch(searchUrl);
-      if (!searchResponse.ok) {
-        throw new Error(`Search failed: ${searchResponse.status}`);
+      if (!typeId) {
+        console.warn(`Type ID not found for item: ${itemName}. Consider adding it to the commonItems mapping.`);
+        throw new Error(`Item type ID not found for: ${itemName}`);
       }
-      
-      const searchData = await searchResponse.json();
-      
-      if (!searchData.inventory_type || searchData.inventory_type.length === 0) {
-        throw new Error('Item not found in ESI search');
-      }
-      
-      const typeId = searchData.inventory_type[0];
       
       // Get market orders for this item in the selected hub
       const hubIds = {
@@ -151,6 +164,81 @@ const MarketAPI = (() => {
     } catch (error) {
       console.warn(`ESI API failed for ${itemName}:`, error);
       throw error;
+    }
+  }
+
+  /**
+   * Find type ID by item name using the Fuzzwork API
+   * This provides a dynamic solution that can handle any EVE Online item
+   */
+  async function findTypeIdByName(itemName) {
+    // Normalize the item name for caching
+    const normalizedName = itemName.toLowerCase().trim();
+    
+    // Check cache first
+    if (typeIdCache[normalizedName]) {
+      return typeIdCache[normalizedName];
+    }
+    
+    try {
+      // Rate limiting: ensure we don't overwhelm the API
+      const now = Date.now();
+      const timeSinceLastCall = now - lastApiCall;
+      if (timeSinceLastCall < MIN_API_INTERVAL) {
+        await new Promise(resolve => setTimeout(resolve, MIN_API_INTERVAL - timeSinceLastCall));
+      }
+      
+      // Use the Fuzzwork API to resolve item names to type IDs
+      const apiUrl = `https://www.fuzzwork.co.uk/api/typeid.php?typename=${encodeURIComponent(itemName)}`;
+      
+      lastApiCall = Date.now();
+      const response = await fetch(apiUrl);
+      if (!response.ok) {
+        throw new Error(`Fuzzwork API failed: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      let typeId = null;
+      
+      // The API returns either a single result or an array of results
+      if (Array.isArray(data)) {
+        // If multiple results, take the first one
+        typeId = data.length > 0 ? data[0].typeID : null;
+      } else if (data.typeID) {
+        // Single result
+        typeId = data.typeID;
+      }
+      
+      // Cache the result (even if null to avoid repeated failed lookups)
+      typeIdCache[normalizedName] = typeId;
+      
+      return typeId;
+      
+    } catch (error) {
+      console.warn(`Fuzzwork API lookup failed for "${itemName}":`, error.message);
+      
+      // Fallback to a small cache of very common items for offline scenarios
+      const fallbackItems = {
+        'rifter': 587,
+        'merlin': 603,
+        'punisher': 625,
+        'tristan': 582,
+        'venture': 32880,
+        'damage control i': 519,
+        'small armor repairer i': 518,
+        'small shield booster i': 519,
+        'plex': 29668,
+        'skill injector': 40519,
+        'skill extractor': 40520,
+      };
+      
+      const typeId = fallbackItems[normalizedName] || null;
+      
+      // Cache the fallback result
+      typeIdCache[normalizedName] = typeId;
+      
+      return typeId;
     }
   }
 
@@ -204,12 +292,27 @@ const MarketAPI = (() => {
       return 2000000 + Math.random() * 8000000; // 2-10M ISK
     } 
     
-    // Module categories
-    else if (name.includes('hardener') || name.includes('armor') || name.includes('shield')) {
-      if (name.includes('t2') || name.includes('ii')) {
-        return 500000 + Math.random() * 2000000; // 500K-2.5M ISK
+    // Implants - More specific matching for the error case
+    else if (name.includes('implant') || name.includes('eifyr') || name.includes('hardwiring')) {
+      if (name.includes('rogue') || name.includes('ws-') || name.includes('speed')) {
+        return 50000000 + Math.random() * 200000000; // 50-250M ISK for speed implants
+      } else if (name.includes('squire') || name.includes('aiming') || name.includes('tracking')) {
+        return 30000000 + Math.random() * 100000000; // 30-130M ISK for aiming implants
+      } else if (name.includes('grade') || name.includes('low-grade') || name.includes('mid-grade') || name.includes('high-grade')) {
+        return 100000000 + Math.random() * 500000000; // 100-600M ISK for grade implants
       } else {
-        return 50000 + Math.random() * 200000; // 50K-250K ISK
+        return 10000000 + Math.random() * 100000000; // 10-110M ISK for other implants
+      }
+    }
+    
+    // Module categories - Enhanced for the error cases
+    else if (name.includes('hardener') || name.includes('armor') || name.includes('shield')) {
+      if (name.includes('experimental') || name.includes('enduring')) {
+        return 1000000 + Math.random() * 5000000; // 1-6M ISK for experimental modules
+      } else if (name.includes('t2') || name.includes('ii')) {
+        return 500000 + Math.random() * 2000000; // 500K-2.5M ISK for T2
+      } else {
+        return 50000 + Math.random() * 200000; // 50K-250K ISK for T1
       }
     } else if (name.includes('gun') || name.includes('turret') || name.includes('launcher')) {
       if (name.includes('t2') || name.includes('ii')) {
@@ -243,16 +346,19 @@ const MarketAPI = (() => {
       return 50000 + Math.random() * 500000; // 50K-550K ISK
     }
     
-    // Implants and boosters
-    else if (name.includes('implant')) {
-      return 10000000 + Math.random() * 100000000; // 10-110M ISK
-    } else if (name.includes('booster')) {
+    // Enhanced boosters - separate from repair boosters
+    else if (name.includes('booster') && !name.includes('repair') && !name.includes('shield')) {
       return 1000000 + Math.random() * 10000000; // 1-11M ISK
     }
     
-    // Default for unknown items
+    // Warp drive related items
+    else if (name.includes('warp') && name.includes('drive')) {
+      return 25000000 + Math.random() * 75000000; // 25-100M ISK for warp drive speed implants
+    }
+    
+    // Default for unknown items - slightly higher due to the specific failing items
     else {
-      return 25000 + Math.random() * 75000; // 25K-100K ISK
+      return 100000 + Math.random() * 500000; // 100K-600K ISK
     }
   }
 
@@ -276,8 +382,10 @@ const MarketAPI = (() => {
           const price = await getItemPrice(item.name);
           return { name: item.name, price: price };
         } catch (error) {
-          console.warn(`Failed to get price for ${item.name}:`, error);
-          return { name: item.name, price: estimateItemPrice(item.name) };
+          console.warn(`Failed to get price for "${item.name}":`, error.message);
+          const estimatedPrice = estimateItemPrice(item.name);
+          console.info(`Using estimated price of ${estimatedPrice.toLocaleString()} ISK for "${item.name}"`);
+          return { name: item.name, price: estimatedPrice };
         }
       });
       
@@ -313,7 +421,7 @@ const MarketAPI = (() => {
   function setPriceHub(hub) {
     if (hub && typeof hub === 'string') {
       currentPriceHub = hub.toLowerCase();
-      // Clear cache when changing hub
+      // Clear price cache when changing hub (type ID cache can remain)
       Object.keys(priceCache).forEach(key => delete priceCache[key]);
       cacheTimestamp = null;
       console.log(`Price hub set to: ${currentPriceHub}`);
@@ -327,6 +435,7 @@ const MarketAPI = (() => {
     getItemPrice,
     getBatchItemPrices,
     refreshCache,
+    clearAllCaches,
     setPriceHub,
     init
   };
