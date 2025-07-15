@@ -65,4 +65,32 @@ function getShips() {
     });
 }
 
-// updateShip and deleteShip will be implemented later
+function updateShip(shipId, updateData) {
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction(['ships'], 'readwrite');
+        const store = transaction.objectStore('ships');
+        
+        // First get the existing ship
+        const getRequest = store.get(shipId);
+        
+        getRequest.onsuccess = () => {
+            const ship = getRequest.result;
+            if (!ship) {
+                reject(new Error('Ship not found'));
+                return;
+            }
+            
+            // Update the ship with new data
+            const updatedShip = { ...ship, ...updateData };
+            
+            // Save the updated ship
+            const putRequest = store.put(updatedShip);
+            putRequest.onsuccess = () => resolve(updatedShip);
+            putRequest.onerror = (event) => reject(event.target.error);
+        };
+        
+        getRequest.onerror = (event) => reject(event.target.error);
+    });
+}
+
+// deleteShip will be implemented later

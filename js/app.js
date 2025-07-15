@@ -102,6 +102,29 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             }
             
+            // Generate checklist HTML
+            let checklistHTML = '<div class="checklist-section">';
+            checklistHTML += '<h4>Pre-flight Checklist</h4>';
+            checklistHTML += '<ul class="checklist" data-ship-id="' + ship.id + '">';
+            
+            if (ship.checklist && ship.checklist.length > 0) {
+                ship.checklist.forEach((item, index) => {
+                    checklistHTML += `<li>
+                        <span class="checklist-item">${item}</span>
+                        <button class="remove-checklist-item" data-ship-id="${ship.id}" data-index="${index}">×</button>
+                    </li>`;
+                });
+            } else {
+                checklistHTML += '<li class="empty-checklist">No checklist items yet.</li>';
+            }
+            
+            checklistHTML += '</ul>';
+            checklistHTML += '<div class="add-checklist-item">';
+            checklistHTML += `<input type="text" class="checklist-input" data-ship-id="${ship.id}" placeholder="Add checklist item...">`;
+            checklistHTML += `<button class="add-checklist-btn" data-ship-id="${ship.id}">Add</button>`;
+            checklistHTML += '</div>';
+            checklistHTML += '</div>';
+            
             shipCard.innerHTML = `
                 <header>${ship.name}</header>
                 <p><strong>Type:</strong> ${shipType}</p>
@@ -110,6 +133,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     ${valueDisplay}
                 </p>
                 ${itemsDisplay}
+                ${checklistHTML}
                 <details>
                     <summary>Fitting</summary>
                     <pre><code>${ship.fitting || 'No fitting provided.'}</code></pre>
@@ -118,6 +142,74 @@ document.addEventListener('DOMContentLoaded', async () => {
             shipListDiv.appendChild(shipCard);
         });
     }
+
+    // --- Checklist Management ---
+    async function addChecklistItem(shipId, item) {
+        try {
+            const ships = await getShips();
+            const ship = ships.find(s => s.id === shipId);
+            if (!ship) {
+                throw new Error('Ship not found');
+            }
+            
+            const newChecklist = [...(ship.checklist || []), item];
+            await updateShip(shipId, { checklist: newChecklist });
+            await renderShips();
+        } catch (error) {
+            console.error('Error adding checklist item:', error);
+            alert('Error adding checklist item');
+        }
+    }
+
+    async function removeChecklistItem(shipId, itemIndex) {
+        try {
+            const ships = await getShips();
+            const ship = ships.find(s => s.id === shipId);
+            if (!ship) {
+                throw new Error('Ship not found');
+            }
+            
+            const newChecklist = ship.checklist.filter((_, index) => index !== itemIndex);
+            await updateShip(shipId, { checklist: newChecklist });
+            await renderShips();
+        } catch (error) {
+            console.error('Error removing checklist item:', error);
+            alert('Error removing checklist item');
+        }
+    }
+
+    // Event delegation for checklist management
+    shipListDiv.addEventListener('click', async (e) => {
+        if (e.target.classList.contains('add-checklist-btn')) {
+            const shipId = parseInt(e.target.dataset.shipId);
+            const input = e.target.parentElement.querySelector('.checklist-input');
+            const item = input.value.trim();
+            
+            if (item) {
+                await addChecklistItem(shipId, item);
+                input.value = '';
+            }
+        }
+        
+        if (e.target.classList.contains('remove-checklist-item')) {
+            const shipId = parseInt(e.target.dataset.shipId);
+            const itemIndex = parseInt(e.target.dataset.index);
+            await removeChecklistItem(shipId, itemIndex);
+        }
+    });
+
+    // Handle Enter key in checklist input
+    shipListDiv.addEventListener('keypress', async (e) => {
+        if (e.key === 'Enter' && e.target.classList.contains('checklist-input')) {
+            const shipId = parseInt(e.target.dataset.shipId);
+            const item = e.target.value.trim();
+            
+            if (item) {
+                await addChecklistItem(shipId, item);
+                e.target.value = '';
+            }
+        }
+    });
 
     addShipForm.addEventListener('submit', async (e) => {
         e.preventDefault();
