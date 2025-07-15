@@ -8,6 +8,39 @@ document.addEventListener('DOMContentLoaded', async () => {
     const sections = document.querySelectorAll('#main-content section');
     const addShipForm = document.getElementById('add-ship-form');
     const shipListDiv = document.getElementById('ship-list');
+    
+    // Mobile navigation elements
+    const navToggle = document.querySelector('.nav-toggle');
+    const nav = document.querySelector('nav');
+    const navOverlay = document.querySelector('.nav-overlay');
+
+    // --- Mobile Navigation ---
+    function toggleMobileNav() {
+        nav.classList.toggle('active');
+        navOverlay.classList.toggle('active');
+        document.body.style.overflow = nav.classList.contains('active') ? 'hidden' : '';
+    }
+
+    function closeMobileNav() {
+        nav.classList.remove('active');
+        navOverlay.classList.remove('active');
+        document.body.style.overflow = '';
+    }
+
+    navToggle.addEventListener('click', toggleMobileNav);
+    navOverlay.addEventListener('click', closeMobileNav);
+
+    // Close mobile nav when clicking nav links
+    navLinks.forEach(link => {
+        link.addEventListener('click', closeMobileNav);
+    });
+
+    // Close mobile nav on escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && nav.classList.contains('active')) {
+            closeMobileNav();
+        }
+    });
 
     // --- Navigation ---
     navLinks.forEach(link => {
@@ -15,9 +48,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             e.preventDefault();
             const targetId = link.getAttribute('data-section');
 
+            // Update active states
+            navLinks.forEach(l => l.removeAttribute('aria-current'));
+            link.setAttribute('aria-current', 'page');
+
             sections.forEach(section => {
                 section.style.display = (section.id === targetId) ? 'block' : 'none';
             });
+            
             // Show hangar by default for now
             if (targetId === 'hangar-section') {
                 renderShips();
@@ -39,12 +77,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             const shipType = ship.type || 'Unknown type';
             
             let valueDisplay;
+            let statusClass = '';
             if (ship.value > 0) {
                 valueDisplay = `${ship.value.toLocaleString()} ISK`;
+                statusClass = 'success';
             } else if (ship.value === 0 && ship.fitting) {
                 valueDisplay = 'Price data unavailable';
+                statusClass = 'warning';
             } else {
                 valueDisplay = 'No fitting data';
+                statusClass = 'error';
             }
             
             // Show parsed items if available
@@ -63,7 +105,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             shipCard.innerHTML = `
                 <header>${ship.name}</header>
                 <p><strong>Type:</strong> ${shipType}</p>
-                <p><strong>Estimated Value:</strong> ${valueDisplay}</p>
+                <p><strong>Estimated Value:</strong> 
+                    <span class="status-indicator ${statusClass}"></span>
+                    ${valueDisplay}
+                </p>
                 ${itemsDisplay}
                 <details>
                     <summary>Fitting</summary>

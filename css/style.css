@@ -1,12 +1,243 @@
-/* Custom styles will go here */
-/* For now, we rely on Pico.css */
+/* Enhanced CSS3 styling with Pico CSS framework */
+/* Mobile-first responsive design */
 
-nav {
-  position: fixed;
-  height: 100vh;
-  width: 200px; /* Adjust width as needed */
+/* CSS Variables for consistent theming */
+:root {
+  --nav-width: 200px;
+  --nav-width-mobile: 250px;
+  --transition-speed: 0.3s;
+  --shadow-subtle: 0 2px 8px rgba(0, 0, 0, 0.1);
+  --shadow-elevated: 0 4px 16px rgba(0, 0, 0, 0.2);
+  --border-radius: 8px;
 }
 
+/* Enhanced navigation with CSS3 features */
+nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  width: var(--nav-width);
+  background: var(--background-color);
+  border-right: 1px solid var(--border-color);
+  box-shadow: var(--shadow-subtle);
+  z-index: 1000;
+  transition: transform var(--transition-speed) ease-in-out;
+  overflow-y: auto;
+}
+
+/* Navigation links with hover effects */
+nav a {
+  display: block;
+  padding: 0.75rem 1rem;
+  text-decoration: none;
+  color: var(--color);
+  border-radius: var(--border-radius);
+  margin: 0.25rem 0.5rem;
+  transition: all var(--transition-speed) ease;
+  position: relative;
+}
+
+nav a:hover {
+  background: var(--primary-hover);
+  transform: translateX(4px);
+  box-shadow: var(--shadow-subtle);
+}
+
+nav a[aria-current="page"] {
+  background: var(--primary);
+  color: var(--primary-inverse);
+  font-weight: 600;
+}
+
+/* Main content area */
 #main-content {
-  margin-left: 220px; /* Adjust to be slightly more than nav width */
+  margin-left: var(--nav-width);
+  padding: 2rem;
+  transition: margin-left var(--transition-speed) ease-in-out;
+  min-height: 100vh;
+}
+
+/* Enhanced form styling */
+form {
+  background: var(--card-background-color);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-subtle);
+  transition: box-shadow var(--transition-speed) ease;
+}
+
+form:hover {
+  box-shadow: var(--shadow-elevated);
+}
+
+/* Enhanced button styling */
+button {
+  transition: all var(--transition-speed) ease;
+  position: relative;
+  overflow: hidden;
+}
+
+button:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-elevated);
+}
+
+button:active {
+  transform: translateY(0);
+}
+
+/* Loading state for buttons */
+button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Enhanced article cards */
+article {
+  transition: all var(--transition-speed) ease;
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-subtle);
+}
+
+article:hover {
+  box-shadow: var(--shadow-elevated);
+  transform: translateY(-2px);
+}
+
+/* Mobile hamburger menu */
+.nav-toggle {
+  display: none;
+  position: fixed;
+  top: 1rem;
+  left: 1rem;
+  z-index: 1001;
+  background: var(--primary);
+  color: var(--primary-inverse);
+  border: none;
+  border-radius: var(--border-radius);
+  padding: 0.5rem;
+  cursor: pointer;
+  transition: all var(--transition-speed) ease;
+}
+
+.nav-toggle:hover {
+  background: var(--primary-hover);
+  transform: scale(1.05);
+}
+
+/* Mobile overlay */
+.nav-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 999;
+  opacity: 0;
+  transition: opacity var(--transition-speed) ease;
+}
+
+.nav-overlay.active {
+  opacity: 1;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .nav-toggle {
+    display: block;
+  }
+  
+  nav {
+    width: var(--nav-width-mobile);
+    transform: translateX(-100%);
+    box-shadow: var(--shadow-elevated);
+  }
+  
+  nav.active {
+    transform: translateX(0);
+  }
+  
+  #main-content {
+    margin-left: 0;
+    padding: 1rem;
+    padding-top: 4rem; /* Account for hamburger menu */
+  }
+  
+  .nav-overlay {
+    display: block;
+  }
+}
+
+/* Enhanced typography and spacing */
+h1, h2, h3, h4, h5, h6 {
+  transition: color var(--transition-speed) ease;
+}
+
+/* Form enhancements */
+input, textarea, select {
+  transition: all var(--transition-speed) ease;
+}
+
+input:focus, textarea:focus, select:focus {
+  transform: scale(1.02);
+  box-shadow: var(--shadow-elevated);
+}
+
+/* Status indicators */
+.status-indicator {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 0.5rem;
+  animation: pulse 2s infinite;
+}
+
+.status-indicator.success {
+  background: var(--success);
+}
+
+.status-indicator.error {
+  background: var(--error);
+}
+
+.status-indicator.warning {
+  background: var(--warning);
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Enhanced scrollbar for webkit browsers */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--background-color);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary);
+}
+
+/* Print styles */
+@media print {
+  nav {
+    display: none;
+  }
+  
+  #main-content {
+    margin-left: 0;
+  }
 }
