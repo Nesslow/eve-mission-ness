@@ -8,6 +8,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const sections = document.querySelectorAll('#main-content section');
     const addShipForm = document.getElementById('add-ship-form');
     const shipListDiv = document.getElementById('ship-list');
+    const addMissionForm = document.getElementById('add-mission-form');
+    const missionListDiv = document.getElementById('mission-list');
     
     // Mobile navigation elements
     const navToggle = document.querySelector('.nav-toggle');
@@ -56,9 +58,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 section.style.display = (section.id === targetId) ? 'block' : 'none';
             });
             
-            // Show hangar by default for now
+            // Load data when switching to specific sections
             if (targetId === 'hangar-section') {
                 renderShips();
+            } else if (targetId === 'missions-section') {
+                renderMissions();
             }
         });
     });
@@ -362,6 +366,197 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Reset button state
             submitButton.textContent = originalText;
             submitButton.disabled = false;
+        }
+    });
+
+    // --- Missions Logic ---
+    async function renderMissions() {
+        const missions = await getMissions();
+        missionListDiv.innerHTML = ''; // Clear current list
+        if (missions.length === 0) {
+            missionListDiv.innerHTML = '<p>No missions in your database yet.</p>';
+            return;
+        }
+
+        missions.forEach(mission => {
+            const missionCard = document.createElement('article');
+            
+            // Format rewards
+            const iskReward = mission.baseIskReward ? mission.baseIskReward.toLocaleString() : '0';
+            const lpReward = mission.baseLpReward ? mission.baseLpReward.toLocaleString() : '0';
+            
+            // Format tags
+            const tagsDisplay = mission.tags && mission.tags.length > 0 
+                ? mission.tags.map(tag => `<span class="tag">${tag}</span>`).join(' ')
+                : '<span class="muted">No tags</span>';
+            
+            missionCard.innerHTML = `
+                <header>
+                    ${mission.name}
+                    <div class="mission-actions">
+                        <button class="edit-mission-btn" data-mission-id="${mission.id}">Edit</button>
+                        <button class="delete-mission-btn" data-mission-id="${mission.id}">Delete</button>
+                    </div>
+                </header>
+                <div class="mission-details">
+                    <div class="mission-meta">
+                        <p><strong>Level:</strong> ${mission.level}</p>
+                        <p><strong>Enemy Faction:</strong> ${mission.enemyFaction || 'Unknown'}</p>
+                        <p><strong>Damage to Deal:</strong> ${mission.damageToDeal || 'Unknown'}</p>
+                        <p><strong>Damage to Resist:</strong> ${mission.damageToResist || 'Unknown'}</p>
+                    </div>
+                    <div class="mission-rewards">
+                        <p><strong>Base ISK Reward:</strong> ${iskReward} ISK</p>
+                        <p><strong>Base LP Reward:</strong> ${lpReward} LP</p>
+                    </div>
+                    <div class="mission-tags">
+                        <p><strong>Tags:</strong> ${tagsDisplay}</p>
+                    </div>
+                    ${mission.notes ? `<div class="mission-notes">
+                        <p><strong>Notes:</strong></p>
+                        <p class="notes-text">${mission.notes}</p>
+                    </div>` : ''}
+                </div>
+            `;
+            missionListDiv.appendChild(missionCard);
+        });
+    }
+
+    async function handleDeleteMission(missionId) {
+        try {
+            const missions = await getMissions();
+            const mission = missions.find(m => m.id === missionId);
+            if (!mission) {
+                throw new Error('Mission not found');
+            }
+            
+            const confirmed = confirm(`Are you sure you want to delete "${mission.name}"? This action cannot be undone.`);
+            if (!confirmed) {
+                return;
+            }
+            
+            await deleteMission(missionId);
+            await renderMissions();
+            console.log(`Mission "${mission.name}" deleted successfully`);
+        } catch (error) {
+            console.error('Error deleting mission:', error);
+            alert('Error deleting mission');
+        }
+    }
+
+    async function handleEditMission(missionId) {
+        try {
+            const missions = await getMissions();
+            const mission = missions.find(m => m.id === missionId);
+            if (!mission) {
+                throw new Error('Mission not found');
+            }
+            
+            // Populate form with existing data
+            document.getElementById('mission-name').value = mission.name || '';
+            document.getElementById('mission-level').value = mission.level || 1;
+            document.getElementById('mission-enemy-faction').value = mission.enemyFaction || '';
+            document.getElementById('mission-damage-to-deal').value = mission.damageToDeal || '';
+            document.getElementById('mission-damage-to-resist').value = mission.damageToResist || '';
+            document.getElementById('mission-base-isk-reward').value = mission.baseIskReward || '';
+            document.getElementById('mission-base-lp-reward').value = mission.baseLpReward || '';
+            document.getElementById('mission-tags').value = mission.tags ? mission.tags.join(', ') : '';
+            document.getElementById('mission-notes').value = mission.notes || '';
+            
+            // Change form button to update mode
+            const submitButton = addMissionForm.querySelector('button[type="submit"]');
+            const originalText = submitButton.textContent;
+            submitButton.textContent = 'Update Mission';
+            
+            // Store the mission ID for update
+            addMissionForm.dataset.editingMissionId = missionId;
+            
+            // Focus on the form
+            document.getElementById('mission-name').focus();
+            
+            console.log(`Editing mission: ${mission.name}`);
+        } catch (error) {
+            console.error('Error editing mission:', error);
+            alert('Error editing mission');
+        }
+    }
+
+    // Event delegation for mission actions
+    missionListDiv.addEventListener('click', async (e) => {
+        if (e.target.classList.contains('delete-mission-btn')) {
+            const missionId = parseInt(e.target.dataset.missionId);
+            await handleDeleteMission(missionId);
+        }
+        
+        if (e.target.classList.contains('edit-mission-btn')) {
+            const missionId = parseInt(e.target.dataset.missionId);
+            await handleEditMission(missionId);
+        }
+    });
+
+    addMissionForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const missionName = document.getElementById('mission-name').value;
+        const missionLevel = parseInt(document.getElementById('mission-level').value);
+        const enemyFaction = document.getElementById('mission-enemy-faction').value;
+        const damageToDeal = document.getElementById('mission-damage-to-deal').value;
+        const damageToResist = document.getElementById('mission-damage-to-resist').value;
+        const baseIskReward = parseInt(document.getElementById('mission-base-isk-reward').value) || 0;
+        const baseLpReward = parseInt(document.getElementById('mission-base-lp-reward').value) || 0;
+        const tagsInput = document.getElementById('mission-tags').value;
+        const notes = document.getElementById('mission-notes').value;
+        
+        // Parse tags
+        const tags = tagsInput 
+            ? tagsInput.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0)
+            : [];
+
+        const submitButton = e.target.querySelector('button[type="submit"]');
+        const originalText = submitButton.textContent;
+        submitButton.disabled = true;
+
+        try {
+            const missionData = {
+                name: missionName,
+                level: missionLevel,
+                enemyFaction: enemyFaction,
+                damageToDeal: damageToDeal,
+                damageToResist: damageToResist,
+                baseIskReward: baseIskReward,
+                baseLpReward: baseLpReward,
+                tags: tags,
+                notes: notes
+            };
+
+            const editingMissionId = addMissionForm.dataset.editingMissionId;
+            
+            if (editingMissionId) {
+                // Update existing mission
+                submitButton.textContent = 'Updating...';
+                await updateMission(parseInt(editingMissionId), missionData);
+                console.log("Mission updated:", missionData);
+                
+                // Reset form to add mode
+                delete addMissionForm.dataset.editingMissionId;
+            } else {
+                // Add new mission
+                submitButton.textContent = 'Adding...';
+                await addMission(missionData);
+                console.log("Mission added:", missionData);
+            }
+            
+            addMissionForm.reset();
+            await renderMissions();
+            
+        } catch (error) {
+            console.error('Error saving mission:', error);
+            alert('Error saving mission. Please check the console for details.');
+        } finally {
+            submitButton.disabled = false;
+            if (!addMissionForm.dataset.editingMissionId) {
+                submitButton.textContent = originalText;
+            }
         }
     });
 
