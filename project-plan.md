@@ -17,13 +17,7 @@
 
 This section outlines the design philosophy for the application.
 
-<<<<<<< HEAD
-1.  **CSS**
-
-2.  **Look and Feel:**
-=======
 1.  **Look and Feel:**
->>>>>>> 556180466bd00a218ef125cf61902724e1f6c48b
     - **Theme:** Dark theme by default. The design should feel like a professional utility tool, inspired by the dark, futuristic aesthetic of EVE Online.
     - **Layout:** A simple, responsive two-column layout.
       - A fixed navigation sidebar on the left for main sections (Dashboard, Hangar, Missions, History, Reports, Settings).
@@ -64,6 +58,7 @@ Represents a static, reusable mission definition.
   damageToDeal: "Kinetic",
   damageToResist: "Kinetic/Thermal",
   baseIskReward: 1200000,
+  bonusIskReward: 900000,
   baseLpReward: 1500,
   notes: "Final battleship is the trigger for the next wave.",
   tags: ["blitz", "high-sec"]
