@@ -4,11 +4,18 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>EVE Online Mission Tracker</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css"/>
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
   <main class="container">
+    <!-- Mobile navigation toggle -->
+    <button class="nav-toggle" aria-label="Toggle navigation">
+      <span>☰</span>
+    </button>
+    
+    <!-- Navigation overlay for mobile -->
+    <div class="nav-overlay"></div>
+    
     <div class="grid">
       <nav>
         <ul>
@@ -29,7 +36,75 @@
           <p>Welcome to your mission tracker.</p>
         </section>
         
-        <section id="missions-section" style="display: none;"><h2>Missions</h2></section>
+        <section id="missions-section" style="display: none;">
+          <h2>Missions</h2>
+          <article>
+            <header>Add New Mission</header>
+            <form id="add-mission-form">
+              <div class="grid">
+                <div>
+                  <label for="mission-name">Mission Name *</label>
+                  <input type="text" id="mission-name" name="mission-name" placeholder="The Blockade" required>
+                </div>
+                <div>
+                  <label for="mission-level">Level *</label>
+                  <select id="mission-level" name="mission-level" required>
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                    <option value="4">4</option>
+                    <option value="5">5</option>
+                  </select>
+                </div>
+              </div>
+              
+              <div class="grid">
+                <div>
+                  <label for="mission-enemy-faction">Enemy Faction</label>
+                  <input type="text" id="mission-enemy-faction" name="mission-enemy-faction" placeholder="Guristas Pirates">
+                </div>
+                <div>
+                  <label for="mission-damage-to-deal">Damage to Deal</label>
+                  <input type="text" id="mission-damage-to-deal" name="mission-damage-to-deal" placeholder="Kinetic">
+                </div>
+              </div>
+              
+              <div class="grid">
+                <div>
+                  <label for="mission-damage-to-resist">Damage to Resist</label>
+                  <input type="text" id="mission-damage-to-resist" name="mission-damage-to-resist" placeholder="Kinetic/Thermal">
+                </div>
+                <div>
+                  <label for="mission-base-isk-reward">Base ISK Reward</label>
+                  <input type="number" id="mission-base-isk-reward" name="mission-base-isk-reward" placeholder="1200000" min="0">
+                </div>
+              </div>
+              
+              <div class="grid">
+                <div>
+                  <label for="mission-base-lp-reward">Base LP Reward</label>
+                  <input type="number" id="mission-base-lp-reward" name="mission-base-lp-reward" placeholder="1500" min="0">
+                </div>
+                <div>
+                  <label for="mission-tags">Tags (comma-separated)</label>
+                  <input type="text" id="mission-tags" name="mission-tags" placeholder="blitz, high-sec">
+                </div>
+              </div>
+              
+              <label for="mission-notes">Notes</label>
+              <textarea id="mission-notes" name="mission-notes" placeholder="Final battleship is the trigger for the next wave."></textarea>
+              
+              <button type="submit">Add Mission</button>
+            </form>
+          </article>
+          
+          <article>
+            <header>Mission Database</header>
+            <div id="mission-list">
+              <!-- Missions will be rendered here by JS -->
+            </div>
+          </article>
+        </section>
         
         <section id="hangar-section" style="display: none;">
           <h2>Hangar</h2>
