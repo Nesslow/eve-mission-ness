@@ -1,0 +1,12 @@
+/* Custom styles will go here */
+/* For now, we rely on Pico.css */
+
+nav {
+  position: fixed;
+  height: 100vh;
+  width: 200px; /* Adjust width as needed */
+}
+
+#main-content {
+  margin-left: 220px; /* Adjust to be slightly more than nav width */
+}
