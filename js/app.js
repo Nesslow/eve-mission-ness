@@ -2,7 +2,14 @@
 document.addEventListener('DOMContentLoaded', async () => {
     console.log("DOM fully loaded and parsed. Initializing app.");
 
-    await initDB(); // Initialize the database
+    try {
+        await initDB(); // Initialize the database
+        console.log("Database initialization completed successfully.");
+    } catch (error) {
+        console.error("Failed to initialize database:", error);
+        alert("Failed to initialize database. Please refresh the page.");
+        return;
+    }
 
     const navLinks = document.querySelectorAll('.nav-link');
     const sections = document.querySelectorAll('#main-content section');
@@ -371,57 +378,62 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // --- Missions Logic ---
     async function renderMissions() {
-        const missions = await getMissions();
-        missionListDiv.innerHTML = ''; // Clear current list
-        if (missions.length === 0) {
-            missionListDiv.innerHTML = '<p>No missions in your database yet.</p>';
-            return;
-        }
+        try {
+            const missions = await getMissions();
+            missionListDiv.innerHTML = ''; // Clear current list
+            if (missions.length === 0) {
+                missionListDiv.innerHTML = '<p>No missions in your database yet.</p>';
+                return;
+            }
 
-        missions.forEach(mission => {
-            const missionCard = document.createElement('article');
-            
-            // Format rewards
-            const iskReward = mission.baseIskReward ? mission.baseIskReward.toLocaleString() : '0';
-            const bonusIskReward = mission.bonusIskReward ? mission.bonusIskReward.toLocaleString() : '0';
-            const lpReward = mission.baseLpReward ? mission.baseLpReward.toLocaleString() : '0';
-            
-            // Format tags
-            const tagsDisplay = mission.tags && mission.tags.length > 0 
-                ? mission.tags.map(tag => `<span class="tag">${tag}</span>`).join(' ')
-                : '<span class="muted">No tags</span>';
-            
-            missionCard.innerHTML = `
-                <header>
-                    ${mission.name}
-                    <div class="mission-actions">
-                        <button class="edit-mission-btn" data-mission-id="${mission.id}">Edit</button>
-                        <button class="delete-mission-btn" data-mission-id="${mission.id}">Delete</button>
+            missions.forEach(mission => {
+                const missionCard = document.createElement('article');
+                
+                // Format rewards
+                const iskReward = mission.baseIskReward ? mission.baseIskReward.toLocaleString() : '0';
+                const bonusIskReward = mission.bonusIskReward ? mission.bonusIskReward.toLocaleString() : '0';
+                const lpReward = mission.baseLpReward ? mission.baseLpReward.toLocaleString() : '0';
+                
+                // Format tags
+                const tagsDisplay = mission.tags && mission.tags.length > 0 
+                    ? mission.tags.map(tag => `<span class="tag">${tag}</span>`).join(' ')
+                    : '<span class="muted">No tags</span>';
+                
+                missionCard.innerHTML = `
+                    <header>
+                        ${mission.name}
+                        <div class="mission-actions">
+                            <button class="edit-mission-btn" data-mission-id="${mission.id}">Edit</button>
+                            <button class="delete-mission-btn" data-mission-id="${mission.id}">Delete</button>
+                        </div>
+                    </header>
+                    <div class="mission-details">
+                        <div class="mission-meta">
+                            <p><strong>Level:</strong> ${mission.level}</p>
+                            <p><strong>Enemy Faction:</strong> ${mission.enemyFaction || 'Unknown'}</p>
+                            <p><strong>Damage to Deal:</strong> ${mission.damageToDeal || 'Unknown'}</p>
+                            <p><strong>Damage to Resist:</strong> ${mission.damageToResist || 'Unknown'}</p>
+                        </div>
+                        <div class="mission-rewards">
+                            <p><strong>ISK Reward:</strong> ${iskReward} ISK</p>
+                            <p><strong>Bonus ISK Reward:</strong> ${bonusIskReward} ISK</p>
+                            <p><strong>LP Reward:</strong> ${lpReward} LP</p>
+                        </div>
+                        <div class="mission-tags">
+                            <p><strong>Tags:</strong> ${tagsDisplay}</p>
+                        </div>
+                        ${mission.notes ? `<div class="mission-notes">
+                            <p><strong>Notes:</strong></p>
+                            <p class="notes-text">${mission.notes}</p>
+                        </div>` : ''}
                     </div>
-                </header>
-                <div class="mission-details">
-                    <div class="mission-meta">
-                        <p><strong>Level:</strong> ${mission.level}</p>
-                        <p><strong>Enemy Faction:</strong> ${mission.enemyFaction || 'Unknown'}</p>
-                        <p><strong>Damage to Deal:</strong> ${mission.damageToDeal || 'Unknown'}</p>
-                        <p><strong>Damage to Resist:</strong> ${mission.damageToResist || 'Unknown'}</p>
-                    </div>
-                    <div class="mission-rewards">
-                        <p><strong>ISK Reward:</strong> ${iskReward} ISK</p>
-                        <p><strong>Bonus ISK Reward:</strong> ${bonusIskReward} ISK</p>
-                        <p><strong>LP Reward:</strong> ${lpReward} LP</p>
-                    </div>
-                    <div class="mission-tags">
-                        <p><strong>Tags:</strong> ${tagsDisplay}</p>
-                    </div>
-                    ${mission.notes ? `<div class="mission-notes">
-                        <p><strong>Notes:</strong></p>
-                        <p class="notes-text">${mission.notes}</p>
-                    </div>` : ''}
-                </div>
-            `;
-            missionListDiv.appendChild(missionCard);
-        });
+                `;
+                missionListDiv.appendChild(missionCard);
+            });
+        } catch (error) {
+            console.error('Error rendering missions:', error);
+            missionListDiv.innerHTML = '<p>Error loading missions. Please try refreshing the page.</p>';
+        }
     }
 
     async function handleDeleteMission(missionId) {

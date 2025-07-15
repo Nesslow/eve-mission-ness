@@ -10,12 +10,16 @@ function initDB() {
         const request = indexedDB.open(DB_NAME, DB_VERSION);
 
         request.onupgradeneeded = (event) => {
-            const db = event.target.result;
-            if (!db.objectStoreNames.contains('ships')) {
-                db.createObjectStore('ships', { keyPath: 'id', autoIncrement: true });
+            const database = event.target.result;
+            console.log("Database upgrade needed. Creating object stores...");
+            
+            if (!database.objectStoreNames.contains('ships')) {
+                database.createObjectStore('ships', { keyPath: 'id', autoIncrement: true });
+                console.log("Created 'ships' object store");
             }
-            if (!db.objectStoreNames.contains('missions')) {
-                db.createObjectStore('missions', { keyPath: 'id', autoIncrement: true });
+            if (!database.objectStoreNames.contains('missions')) {
+                database.createObjectStore('missions', { keyPath: 'id', autoIncrement: true });
+                console.log("Created 'missions' object store");
             }
             // Future object stores can be created here
             // e.g., missionRuns, settings
@@ -24,12 +28,45 @@ function initDB() {
         request.onsuccess = (event) => {
             db = event.target.result;
             console.log("Database initialized successfully.");
-            resolve(db);
+            
+            // Ensure all required object stores exist
+            const requiredStores = ['ships', 'missions'];
+            const missingStores = requiredStores.filter(store => !db.objectStoreNames.contains(store));
+            
+            if (missingStores.length > 0) {
+                console.error("Missing object stores:", missingStores);
+                // Close and reopen with version increment to trigger upgrade
+                db.close();
+                const upgradeRequest = indexedDB.open(DB_NAME, DB_VERSION + 1);
+                upgradeRequest.onupgradeneeded = (upgradeEvent) => {
+                    const upgradeDb = upgradeEvent.target.result;
+                    missingStores.forEach(storeName => {
+                        if (!upgradeDb.objectStoreNames.contains(storeName)) {
+                            upgradeDb.createObjectStore(storeName, { keyPath: 'id', autoIncrement: true });
+                            console.log(`Created missing '${storeName}' object store`);
+                        }
+                    });
+                };
+                upgradeRequest.onsuccess = (upgradeEvent) => {
+                    db = upgradeEvent.target.result;
+                    resolve(db);
+                };
+                upgradeRequest.onerror = (upgradeEvent) => {
+                    console.error("Database upgrade error:", upgradeEvent.target.error);
+                    reject(upgradeEvent.target.error);
+                };
+            } else {
+                resolve(db);
+            }
         };
 
         request.onerror = (event) => {
-            console.error("Database error:", event.target.errorCode);
-            reject(event.target.errorCode);
+            console.error("Database error:", event.target.error);
+            reject(event.target.error);
+        };
+        
+        request.onblocked = (event) => {
+            console.warn("Database blocked. Please close other tabs with this application.");
         };
     });
 }
@@ -38,6 +75,12 @@ function addShip(ship) {
     return new Promise((resolve, reject) => {
         if (!db) {
             reject(new Error('Database not initialized'));
+            return;
+        }
+        
+        // Check if the object store exists
+        if (!db.objectStoreNames.contains('ships')) {
+            reject(new Error('Ships object store not found'));
             return;
         }
         
@@ -59,6 +102,8 @@ function addShip(ship) {
 
         request.onsuccess = () => resolve(request.result);
         request.onerror = (event) => reject(event.target.error);
+        
+        transaction.onerror = (event) => reject(event.target.error);
     });
 }
 
@@ -69,12 +114,20 @@ function getShips() {
             return;
         }
         
+        // Check if the object store exists
+        if (!db.objectStoreNames.contains('ships')) {
+            reject(new Error('Ships object store not found'));
+            return;
+        }
+        
         const transaction = db.transaction(['ships'], 'readonly');
         const store = transaction.objectStore('ships');
         const request = store.getAll();
 
         request.onsuccess = () => resolve(request.result);
         request.onerror = (event) => reject(event.target.error);
+        
+        transaction.onerror = (event) => reject(event.target.error);
     });
 }
 
@@ -136,6 +189,12 @@ function addMission(mission) {
             return;
         }
         
+        // Check if the object store exists
+        if (!db.objectStoreNames.contains('missions')) {
+            reject(new Error('Missions object store not found'));
+            return;
+        }
+        
         const transaction = db.transaction(['missions'], 'readwrite');
         const store = transaction.objectStore('missions');
         
@@ -158,6 +217,8 @@ function addMission(mission) {
 
         request.onsuccess = () => resolve(request.result);
         request.onerror = (event) => reject(event.target.error);
+        
+        transaction.onerror = (event) => reject(event.target.error);
     });
 }
 
@@ -168,12 +229,20 @@ function getMissions() {
             return;
         }
         
+        // Check if the object store exists
+        if (!db.objectStoreNames.contains('missions')) {
+            reject(new Error('Missions object store not found'));
+            return;
+        }
+        
         const transaction = db.transaction(['missions'], 'readonly');
         const store = transaction.objectStore('missions');
         const request = store.getAll();
 
         request.onsuccess = () => resolve(request.result);
         request.onerror = (event) => reject(event.target.error);
+        
+        transaction.onerror = (event) => reject(event.target.error);
     });
 }
 

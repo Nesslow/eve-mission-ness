@@ -345,6 +345,81 @@ button[type="submit"]:hover {
   background: #218838;
 }
 
+/* Fieldset and Checkbox Styles */
+fieldset {
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  padding: 1rem;
+  margin-bottom: 1rem;
+  background: var(--surface-color);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.5rem;
+}
+
+fieldset legend {
+  color: var(--color);
+  font-weight: 500;
+  padding: 0 0.5rem;
+}
+
+fieldset[role="group"] {
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  padding: 1rem;
+  margin-bottom: 1rem;
+  background: var(--surface-color);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0.75rem;
+}
+
+fieldset label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0;
+  font-weight: 400;
+  cursor: pointer;
+  transition: color var(--transition-speed) ease;
+}
+
+fieldset label:hover {
+  color: var(--primary);
+}
+
+/* Checkbox Styles */
+input[type="checkbox"] {
+  width: auto;
+  margin: 0;
+  margin-right: 0.5rem;
+  cursor: pointer;
+  accent-color: var(--primary);
+}
+
+input[type="checkbox"]:focus {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Radio button styles */
+input[type="radio"] {
+  width: auto;
+  margin: 0;
+  margin-right: 0.5rem;
+  cursor: pointer;
+  accent-color: var(--primary);
+}
+
+input[type="radio"]:focus {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  transform: none;
+  box-shadow: none;
+}
+
 /* Mobile hamburger menu */
 .nav-toggle {
   display: none;
