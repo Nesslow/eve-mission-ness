@@ -2,7 +2,7 @@
 console.log("db.js loaded");
 
 const DB_NAME = 'EVE_MISSION_TRACKER_DB';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 let db;
 
 function initDB() {
