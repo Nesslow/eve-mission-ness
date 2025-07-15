@@ -82,13 +82,31 @@
               
               <div class="grid">
                 <div>
+                  <label for="mission-bonus-isk-reward">Bonus ISK Reward</label>
+                  <input type="number" id="mission-bonus-isk-reward" name="mission-bonus-isk-reward" placeholder="900000" min="0">
+                </div>
+                <div>
                   <label for="mission-base-lp-reward">Base LP Reward</label>
                   <input type="number" id="mission-base-lp-reward" name="mission-base-lp-reward" placeholder="1500" min="0">
                 </div>
-                <div>
-                  <label for="mission-tags">Tags (comma-separated)</label>
-                  <input type="text" id="mission-tags" name="mission-tags" placeholder="blitz, high-sec">
-                </div>
+              </div>
+              
+              <div>
+                <label>Tags</label>
+                <fieldset id="mission-tags" role="group">
+                  <label><input type="checkbox" name="tag-blitz" value="blitz"> Blitz</label>
+                  <label><input type="checkbox" name="tag-high-sec" value="high-sec"> High-Sec</label>
+                  <label><input type="checkbox" name="tag-low-sec" value="low-sec"> Low-Sec</label>
+                  <label><input type="checkbox" name="tag-combat" value="combat"> Combat</label>
+                  <label><input type="checkbox" name="tag-courier" value="courier"> Courier</label>
+                  <label><input type="checkbox" name="tag-mining" value="mining"> Mining</label>
+                  <label><input type="checkbox" name="tag-speed-tank" value="speed-tank"> Speed Tank</label>
+                  <label><input type="checkbox" name="tag-armor-tank" value="armor-tank"> Armor Tank</label>
+                  <label><input type="checkbox" name="tag-shield-tank" value="shield-tank"> Shield Tank</label>
+                  <label><input type="checkbox" name="tag-drones" value="drones"> Drones</label>
+                  <label><input type="checkbox" name="tag-long-range" value="long-range"> Long Range</label>
+                  <label><input type="checkbox" name="tag-short-range" value="short-range"> Short Range</label>
+                </fieldset>
               </div>
               
               <label for="mission-notes">Notes</label>

@@ -36,6 +36,11 @@ function initDB() {
 
 function addShip(ship) {
     return new Promise((resolve, reject) => {
+        if (!db) {
+            reject(new Error('Database not initialized'));
+            return;
+        }
+        
         const transaction = db.transaction(['ships'], 'readwrite');
         const store = transaction.objectStore('ships');
         
@@ -59,6 +64,11 @@ function addShip(ship) {
 
 function getShips() {
     return new Promise((resolve, reject) => {
+        if (!db) {
+            reject(new Error('Database not initialized'));
+            return;
+        }
+        
         const transaction = db.transaction(['ships'], 'readonly');
         const store = transaction.objectStore('ships');
         const request = store.getAll();
@@ -70,6 +80,11 @@ function getShips() {
 
 function updateShip(shipId, updateData) {
     return new Promise((resolve, reject) => {
+        if (!db) {
+            reject(new Error('Database not initialized'));
+            return;
+        }
+        
         const transaction = db.transaction(['ships'], 'readwrite');
         const store = transaction.objectStore('ships');
         
@@ -98,6 +113,11 @@ function updateShip(shipId, updateData) {
 
 function deleteShip(shipId) {
     return new Promise((resolve, reject) => {
+        if (!db) {
+            reject(new Error('Database not initialized'));
+            return;
+        }
+        
         const transaction = db.transaction(['ships'], 'readwrite');
         const store = transaction.objectStore('ships');
         
@@ -111,6 +131,11 @@ function deleteShip(shipId) {
 // Mission CRUD functions
 function addMission(mission) {
     return new Promise((resolve, reject) => {
+        if (!db) {
+            reject(new Error('Database not initialized'));
+            return;
+        }
+        
         const transaction = db.transaction(['missions'], 'readwrite');
         const store = transaction.objectStore('missions');
         
@@ -122,6 +147,7 @@ function addMission(mission) {
             damageToDeal: mission.damageToDeal || '',
             damageToResist: mission.damageToResist || '',
             baseIskReward: mission.baseIskReward || 0,
+            bonusIskReward: mission.bonusIskReward || 0,
             baseLpReward: mission.baseLpReward || 0,
             notes: mission.notes || '',
             tags: mission.tags || [],
@@ -137,6 +163,11 @@ function addMission(mission) {
 
 function getMissions() {
     return new Promise((resolve, reject) => {
+        if (!db) {
+            reject(new Error('Database not initialized'));
+            return;
+        }
+        
         const transaction = db.transaction(['missions'], 'readonly');
         const store = transaction.objectStore('missions');
         const request = store.getAll();
@@ -148,6 +179,11 @@ function getMissions() {
 
 function updateMission(missionId, updateData) {
     return new Promise((resolve, reject) => {
+        if (!db) {
+            reject(new Error('Database not initialized'));
+            return;
+        }
+        
         const transaction = db.transaction(['missions'], 'readwrite');
         const store = transaction.objectStore('missions');
         
@@ -176,6 +212,11 @@ function updateMission(missionId, updateData) {
 
 function deleteMission(missionId) {
     return new Promise((resolve, reject) => {
+        if (!db) {
+            reject(new Error('Database not initialized'));
+            return;
+        }
+        
         const transaction = db.transaction(['missions'], 'readwrite');
         const store = transaction.objectStore('missions');
         
