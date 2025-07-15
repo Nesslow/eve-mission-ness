@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>EVE Online Mission Tracker</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css"/>
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <main class="container">
@@ -28,9 +28,31 @@
           <h2>Dashboard</h2>
           <p>Welcome to your mission tracker.</p>
         </section>
-        <!-- Other sections will be added here and shown/hidden by JS -->
+        
         <section id="missions-section" style="display: none;"><h2>Missions</h2></section>
-        <section id="hangar-section" style="display: none;"><h2>Hangar</h2></section>
+        
+        <section id="hangar-section" style="display: none;">
+          <h2>Hangar</h2>
+          <article>
+            <header>Add New Ship</header>
+            <form id="add-ship-form">
+              <label for="ship-name">Ship Name</label>
+              <input type="text" id="ship-name" name="ship-name" placeholder="My Mission Gila" required>
+              
+              <label for="ship-fitting">Fitting</label>
+              <textarea id="ship-fitting" name="ship-fitting" placeholder="Paste fitting from game..."></textarea>
+              
+              <button type="submit">Add Ship</button>
+            </form>
+          </article>
+          <article>
+            <header>Your Ships</header>
+            <div id="ship-list">
+              <!-- Ships will be rendered here by JS -->
+            </div>
+          </article>
+        </section>
+        
         <section id="history-section" style="display: none;"><h2>History</h2></section>
         <section id="reports-section" style="display: none;"><h2>Reports</h2></section>
         <section id="settings-section" style="display: none;"><h2>Settings</h2></section>
