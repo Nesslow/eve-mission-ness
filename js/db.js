@@ -93,4 +93,14 @@ function updateShip(shipId, updateData) {
     });
 }
 
-// deleteShip will be implemented later
+function deleteShip(shipId) {
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction(['ships'], 'readwrite');
+        const store = transaction.objectStore('ships');
+        
+        const request = store.delete(shipId);
+        
+        request.onsuccess = () => resolve();
+        request.onerror = (event) => reject(event.target.error);
+    });
+}

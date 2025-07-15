@@ -126,7 +126,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             checklistHTML += '</div>';
             
             shipCard.innerHTML = `
-                <header>${ship.name}</header>
+                <header>
+                    ${ship.name}
+                    <div class="ship-actions">
+                        <button class="edit-ship-btn" data-ship-id="${ship.id}">Edit</button>
+                        <button class="delete-ship-btn" data-ship-id="${ship.id}">Delete</button>
+                    </div>
+                </header>
                 <p><strong>Type:</strong> ${shipType}</p>
                 <p><strong>Estimated Value:</strong> 
                     <span class="status-indicator ${statusClass}"></span>
@@ -178,7 +184,94 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // Event delegation for checklist management
+    async function handleDeleteShip(shipId) {
+        try {
+            const ships = await getShips();
+            const ship = ships.find(s => s.id === shipId);
+            if (!ship) {
+                throw new Error('Ship not found');
+            }
+            
+            const confirmed = confirm(`Are you sure you want to delete "${ship.name}"? This action cannot be undone.`);
+            if (!confirmed) {
+                return;
+            }
+            
+            await deleteShip(shipId);
+            await renderShips();
+            console.log(`Ship "${ship.name}" deleted successfully`);
+        } catch (error) {
+            console.error('Error deleting ship:', error);
+            alert('Error deleting ship');
+        }
+    }
+
+    async function handleEditShip(shipId) {
+        try {
+            const ships = await getShips();
+            const ship = ships.find(s => s.id === shipId);
+            if (!ship) {
+                throw new Error('Ship not found');
+            }
+            
+            const newName = prompt('Enter new ship name:', ship.name);
+            if (newName === null) {
+                return; // User cancelled
+            }
+            
+            if (newName.trim() === '') {
+                alert('Ship name cannot be empty');
+                return;
+            }
+            
+            const newFitting = prompt('Enter new fitting (optional):', ship.fitting || '');
+            if (newFitting === null) {
+                return; // User cancelled
+            }
+            
+            // Show loading state
+            const editBtn = document.querySelector(`button[data-ship-id="${shipId}"].edit-ship-btn`);
+            const originalText = editBtn.textContent;
+            editBtn.textContent = 'Updating...';
+            editBtn.disabled = true;
+            
+            try {
+                // Parse the new fitting if provided
+                let updateData = { name: newName.trim() };
+                
+                if (newFitting.trim() !== ship.fitting) {
+                    const { shipType, items } = parseFitting(newFitting);
+                    const value = await calculateShipValue(items);
+                    
+                    updateData = {
+                        ...updateData,
+                        fitting: newFitting.trim(),
+                        type: shipType,
+                        value: value
+                    };
+                }
+                
+                await updateShip(shipId, updateData);
+                await renderShips();
+                console.log(`Ship "${ship.name}" updated successfully`);
+            } catch (error) {
+                console.error('Error updating ship:', error);
+                alert('Error updating ship');
+            } finally {
+                // Reset button state if it still exists
+                const currentEditBtn = document.querySelector(`button[data-ship-id="${shipId}"].edit-ship-btn`);
+                if (currentEditBtn) {
+                    currentEditBtn.textContent = originalText;
+                    currentEditBtn.disabled = false;
+                }
+            }
+        } catch (error) {
+            console.error('Error editing ship:', error);
+            alert('Error editing ship');
+        }
+    }
+
+    // Event delegation for checklist management and ship actions
     shipListDiv.addEventListener('click', async (e) => {
         if (e.target.classList.contains('add-checklist-btn')) {
             const shipId = parseInt(e.target.dataset.shipId);
@@ -195,6 +288,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             const shipId = parseInt(e.target.dataset.shipId);
             const itemIndex = parseInt(e.target.dataset.index);
             await removeChecklistItem(shipId, itemIndex);
+        }
+        
+        if (e.target.classList.contains('delete-ship-btn')) {
+            const shipId = parseInt(e.target.dataset.shipId);
+            await handleDeleteShip(shipId);
+        }
+        
+        if (e.target.classList.contains('edit-ship-btn')) {
+            const shipId = parseInt(e.target.dataset.shipId);
+            await handleEditShip(shipId);
         }
     });
 

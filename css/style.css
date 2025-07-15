@@ -214,6 +214,44 @@ article header {
   color: var(--color);
   padding-bottom: 0.5rem;
   border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.ship-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.ship-actions button {
+  background: none;
+  border: 1px solid var(--border-color);
+  color: var(--color);
+  padding: 0.3rem 0.6rem;
+  border-radius: calc(var(--border-radius) / 2);
+  cursor: pointer;
+  font-size: 0.8rem;
+  transition: all var(--transition-speed) ease;
+}
+
+.ship-actions button:hover {
+  background: var(--surface-color);
+  border-color: var(--primary);
+}
+
+.edit-ship-btn:hover {
+  color: var(--primary);
+}
+
+.delete-ship-btn:hover {
+  color: var(--error);
+  border-color: var(--error);
+}
+
+.ship-actions button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* Forms */
