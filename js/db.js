@@ -35,7 +35,19 @@ function addShip(ship) {
     return new Promise((resolve, reject) => {
         const transaction = db.transaction(['ships'], 'readwrite');
         const store = transaction.objectStore('ships');
-        const request = store.add(ship);
+        
+        // Ensure ship has required fields with defaults
+        const shipData = {
+            name: ship.name || '',
+            type: ship.type || '',
+            fitting: ship.fitting || '',
+            value: ship.value || 0,
+            checklist: ship.checklist || [],
+            isActive: ship.isActive || false,
+            ...ship // Allow override of defaults
+        };
+        
+        const request = store.add(shipData);
 
         request.onsuccess = () => resolve(request.result);
         request.onerror = (event) => reject(event.target.error);

@@ -36,10 +36,39 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         ships.forEach(ship => {
             const shipCard = document.createElement('article');
+            const shipType = ship.type || 'Unknown type';
+            
+            let valueDisplay;
+            if (ship.value > 0) {
+                valueDisplay = `${ship.value.toLocaleString()} ISK`;
+            } else if (ship.value === 0 && ship.fitting) {
+                valueDisplay = 'Price data unavailable';
+            } else {
+                valueDisplay = 'No fitting data';
+            }
+            
+            // Show parsed items if available
+            let itemsDisplay = '';
+            if (ship.fitting) {
+                const { items } = parseFitting(ship.fitting);
+                if (items && items.size > 0) {
+                    itemsDisplay = '<p><strong>Items:</strong></p><ul>';
+                    for (const [itemName, quantity] of items) {
+                        itemsDisplay += `<li>${itemName} x${quantity}</li>`;
+                    }
+                    itemsDisplay += '</ul>';
+                }
+            }
+            
             shipCard.innerHTML = `
                 <header>${ship.name}</header>
-                <p><strong>Fitting:</strong></p>
-                <pre><code>${ship.fitting || 'No fitting provided.'}</code></pre>
+                <p><strong>Type:</strong> ${shipType}</p>
+                <p><strong>Estimated Value:</strong> ${valueDisplay}</p>
+                ${itemsDisplay}
+                <details>
+                    <summary>Fitting</summary>
+                    <pre><code>${ship.fitting || 'No fitting provided.'}</code></pre>
+                </details>
             `;
             shipListDiv.appendChild(shipCard);
         });
@@ -50,16 +79,50 @@ document.addEventListener('DOMContentLoaded', async () => {
         const shipName = document.getElementById('ship-name').value;
         const shipFitting = document.getElementById('ship-fitting').value;
 
-        const newShip = {
-            name: shipName,
-            fitting: shipFitting,
-            // Other fields will be added later
-        };
+        // Show loading state
+        const submitButton = e.target.querySelector('button[type="submit"]');
+        const originalText = submitButton.textContent;
+        submitButton.textContent = 'Calculating Value...';
+        submitButton.disabled = true;
 
-        await addShip(newShip);
-        console.log("Ship added:", newShip);
-        addShipForm.reset();
-        await renderShips();
+        try {
+            // Parse the fitting to get ship type and items
+            const { shipType, items } = parseFitting(shipFitting);
+            console.log('Parsed fitting:', { shipType, items });
+            
+            // Calculate ship value using the API
+            const value = await calculateShipValue(items);
+            console.log('Calculated ship value:', value);
+
+            const newShip = {
+                name: shipName,
+                type: shipType,
+                fitting: shipFitting,
+                value: value,
+                checklist: [],
+                isActive: false
+            };
+
+            await addShip(newShip);
+            console.log("Ship added:", newShip);
+            addShipForm.reset();
+            await renderShips();
+            
+            // Show success message
+            if (value > 0) {
+                console.log(`Ship added successfully with value: ${value.toLocaleString()} ISK`);
+            } else {
+                console.log('Ship added successfully (price data unavailable)');
+            }
+            
+        } catch (error) {
+            console.error('Error adding ship:', error);
+            alert('Error adding ship. Please check the console for details.');
+        } finally {
+            // Reset button state
+            submitButton.textContent = originalText;
+            submitButton.disabled = false;
+        }
     });
 
     // Set hangar as default view for now
