@@ -17,16 +17,14 @@
 
 This section outlines the design philosophy for the application.
 
-1.  **CSS Framework:** Use **Pico.css**.
-    - **Rationale:** It is a lightweight, "classless" framework that provides excellent default styling for semantic HTML elements. This minimizes time spent on CSS and maximizes focus on application logic. It also includes a native dark mode.
-    - **Implementation:** Include the Pico.css stylesheet via CDN in the `<head>` of `index.html`.
+1.  **CSS**
 
 2.  **Look and Feel:**
     - **Theme:** Dark theme by default. The design should feel like a professional utility tool, inspired by the dark, futuristic aesthetic of EVE Online.
     - **Layout:** A simple, responsive two-column layout.
       - A fixed navigation sidebar on the left for main sections (Dashboard, Hangar, Missions, History, Reports, Settings).
       - A main content area on the right that updates based on the selected section.
-    - **Typography & Spacing:** Prioritize readability and clarity. Data tables, forms, and lists should be well-spaced. Use a clean, sans-serif font provided by the framework.
+    - **Typography & Spacing:** Prioritize readability and clarity. Data tables, forms, and lists should be well-spaced. Use a clean, sans-serif font.
     - **Interactivity:** Keep interactions simple and intuitive. Use the standard `<dialog>` element for modals and confirmation prompts. Avoid unnecessary animations. The application should feel fast and responsive.
 
 ---
