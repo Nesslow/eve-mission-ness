@@ -4,6 +4,11 @@ console.log("api.js loaded");
 // Fuzzwork API endpoints
 const FUZZWORK_API_BASE = 'https://market.fuzzwork.co.uk/api/';
 
+// ESI API endpoints and constants
+const ESI_BASE_URL = 'https://esi.evetech.net/latest';
+const THE_FORGE_REGION_ID = 10000002;
+const JITA_4_4_STATION_ID = 60003760;
+
 /**
  * Convert item names to type IDs using Fuzzwork API
  * @param {string[]} itemNames - Array of item names to lookup
@@ -62,7 +67,7 @@ async function getTypeIds(itemNames) {
 }
 
 /**
- * Get market prices for type IDs using Fuzzwork API
+ * Get market prices for type IDs using ESI API
  * @param {number[]} typeIds - Array of type IDs to get prices for
  * @returns {Promise<Map<number, number>>} - Map of type IDs to prices
  */
@@ -74,12 +79,113 @@ async function getPrices(typeIds) {
     const prices = new Map();
     
     try {
-        // Use the aggregated pricing API
+        // Process each type ID individually to get accurate Jita pricing
+        const pricePromises = typeIds.map(async (typeId) => {
+            try {
+                console.log(`Fetching market data for type ID: ${typeId}`);
+                
+                // Step 1: Fetch all sell orders from The Forge region
+                const response = await fetch(`${ESI_BASE_URL}/markets/${THE_FORGE_REGION_ID}/orders?type_id=${typeId}&order_type=sell`);
+                
+                if (!response.ok) {
+                    console.warn(`Failed to get market data for type ID ${typeId}: ${response.status}`);
+                    return { typeId, price: null };
+                }
+                
+                const allOrders = await response.json();
+                
+                // Step 2: Filter orders to include only those at Jita 4-4 station
+                const jitaOrders = allOrders.filter(order => order.location_id === JITA_4_4_STATION_ID);
+                
+                if (jitaOrders.length === 0) {
+                    console.warn(`No sell orders found at Jita 4-4 for type ID ${typeId}`);
+                    return { typeId, price: null };
+                }
+                
+                // Step 3: Sort filtered orders by price in ascending order
+                jitaOrders.sort((a, b) => a.price - b.price);
+                
+                // Step 4: Calculate volume of the lowest 5% of orders
+                const totalVolume = jitaOrders.reduce((sum, order) => sum + order.volume_remain, 0);
+                const targetVolume = totalVolume * 0.05; // 5% of total volume
+                
+                // Step 5: Determine weighted average price of the lowest 5% volume
+                let accumulatedVolume = 0;
+                let weightedSum = 0;
+                let totalWeightedVolume = 0;
+                
+                for (const order of jitaOrders) {
+                    const availableVolume = order.volume_remain;
+                    const volumeToUse = Math.min(availableVolume, targetVolume - accumulatedVolume);
+                    
+                    if (volumeToUse > 0) {
+                        weightedSum += order.price * volumeToUse;
+                        totalWeightedVolume += volumeToUse;
+                        accumulatedVolume += volumeToUse;
+                    }
+                    
+                    if (accumulatedVolume >= targetVolume) {
+                        break;
+                    }
+                }
+                
+                // If we couldn't get enough volume from the lowest 5%, use what we have
+                if (totalWeightedVolume === 0) {
+                    // Fallback to lowest price if no volume in lowest 5%
+                    const lowestPrice = jitaOrders[0].price;
+                    console.log(`Type ID ${typeId}: Using lowest price ${lowestPrice} ISK (no volume in lowest 5%)`);
+                    return { typeId, price: lowestPrice };
+                }
+                
+                const weightedAveragePrice = weightedSum / totalWeightedVolume;
+                console.log(`Type ID ${typeId}: Weighted average price ${weightedAveragePrice.toFixed(2)} ISK from ${totalWeightedVolume} volume`);
+                
+                return { typeId, price: weightedAveragePrice };
+                
+            } catch (error) {
+                console.error(`Error fetching price for type ID ${typeId}:`, error);
+                return { typeId, price: null };
+            }
+        });
+        
+        // Wait for all price fetches to complete
+        const results = await Promise.all(pricePromises);
+        
+        // Build the prices map
+        results.forEach(result => {
+            if (result.price !== null) {
+                prices.set(result.typeId, result.price);
+            }
+        });
+        
+        console.log(`Successfully fetched prices for ${prices.size} out of ${typeIds.length} items`);
+        
+    } catch (error) {
+        console.error('Error in getPrices:', error);
+        
+        // If ESI is completely unavailable, fallback to Fuzzwork as backup
+        console.log('ESI unavailable, attempting Fuzzwork fallback...');
+        return await getFuzzworkPrices(typeIds);
+    }
+    
+    return prices;
+}
+
+/**
+ * Fallback function to get prices from Fuzzwork API
+ * @param {number[]} typeIds - Array of type IDs to get prices for
+ * @returns {Promise<Map<number, number>>} - Map of type IDs to prices
+ */
+async function getFuzzworkPrices(typeIds) {
+    const prices = new Map();
+    
+    try {
+        // Use the aggregated pricing API as fallback
         const typeIdList = typeIds.join(',');
         const response = await fetch(`${FUZZWORK_API_BASE}aggregates?types=${typeIdList}`);
         
         if (!response.ok) {
-            console.error(`Failed to get prices: ${response.status}`);
+            console.error(`Failed to get fallback prices: ${response.status}`);
             return prices;
         }
         
@@ -92,8 +198,10 @@ async function getPrices(typeIds) {
             }
         }
         
+        console.log(`Fallback: Successfully fetched ${prices.size} prices from Fuzzwork`);
+        
     } catch (error) {
-        console.error('Error in getPrices:', error);
+        console.error('Error in getFuzzworkPrices fallback:', error);
     }
     
     return prices;
@@ -110,13 +218,24 @@ async function calculateShipValue(items) {
     }
 
     try {
+        console.log('Calculating ship value for', items.size, 'items');
+        
         // Convert item names to type IDs
         const itemNames = Array.from(items.keys());
         const typeIds = await getTypeIds(itemNames);
         
+        console.log(`Found type IDs for ${typeIds.size} out of ${itemNames.length} items`);
+        
+        if (typeIds.size === 0) {
+            console.warn('No type IDs found for any items - API may be unavailable');
+            return 0;
+        }
+        
         // Get prices for all type IDs
         const typeIdArray = Array.from(typeIds.values());
         const prices = await getPrices(typeIdArray);
+        
+        console.log(`Found prices for ${prices.size} out of ${typeIdArray.length} type IDs`);
         
         // Calculate total value
         let totalValue = 0;
@@ -139,30 +258,44 @@ async function calculateShipValue(items) {
         }
         
         console.log(`Successfully priced ${successfullyPriced} out of ${items.size} items`);
+        console.log(`Total ship value: ${totalValue.toLocaleString()} ISK`);
+        
         return totalValue;
         
     } catch (error) {
         console.error('Error calculating ship value:', error);
         
-        // Return a fallback value or 0 if API is completely unavailable
-        console.log('API unavailable - ship value calculation failed');
+        // Return 0 if calculation fails
+        console.log('Ship value calculation failed - returning 0');
         return 0;
     }
 }
 
 /**
- * Check if the API is available
+ * Check if the ESI API is available
  * @returns {Promise<boolean>} - True if API is accessible
  */
 async function isApiAvailable() {
     try {
-        const response = await fetch(`${FUZZWORK_API_BASE}search?q=test`, {
-            method: 'HEAD',
+        // Check ESI status endpoint
+        const response = await fetch(`${ESI_BASE_URL}/status/`, {
+            method: 'GET',
             mode: 'cors'
         });
         return response.ok;
     } catch (error) {
-        console.warn('API health check failed:', error);
-        return false;
+        console.warn('ESI API health check failed:', error);
+        
+        // Fallback to check Fuzzwork API
+        try {
+            const fallbackResponse = await fetch(`${FUZZWORK_API_BASE}search?q=test`, {
+                method: 'HEAD',
+                mode: 'cors'
+            });
+            return fallbackResponse.ok;
+        } catch (fallbackError) {
+            console.warn('Fuzzwork API health check also failed:', fallbackError);
+            return false;
+        }
     }
 }
