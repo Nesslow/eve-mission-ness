@@ -383,6 +383,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             
             // Format rewards
             const iskReward = mission.baseIskReward ? mission.baseIskReward.toLocaleString() : '0';
+            const bonusIskReward = mission.bonusIskReward ? mission.bonusIskReward.toLocaleString() : '0';
             const lpReward = mission.baseLpReward ? mission.baseLpReward.toLocaleString() : '0';
             
             // Format tags
@@ -406,8 +407,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <p><strong>Damage to Resist:</strong> ${mission.damageToResist || 'Unknown'}</p>
                     </div>
                     <div class="mission-rewards">
-                        <p><strong>Base ISK Reward:</strong> ${iskReward} ISK</p>
-                        <p><strong>Base LP Reward:</strong> ${lpReward} LP</p>
+                        <p><strong>ISK Reward:</strong> ${iskReward} ISK</p>
+                        <p><strong>Bonus ISK Reward:</strong> ${bonusIskReward} ISK</p>
+                        <p><strong>LP Reward:</strong> ${lpReward} LP</p>
                     </div>
                     <div class="mission-tags">
                         <p><strong>Tags:</strong> ${tagsDisplay}</p>
@@ -459,9 +461,23 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('mission-damage-to-deal').value = mission.damageToDeal || '';
             document.getElementById('mission-damage-to-resist').value = mission.damageToResist || '';
             document.getElementById('mission-base-isk-reward').value = mission.baseIskReward || '';
+            document.getElementById('mission-bonus-isk-reward').value = mission.bonusIskReward || '';
             document.getElementById('mission-base-lp-reward').value = mission.baseLpReward || '';
-            document.getElementById('mission-tags').value = mission.tags ? mission.tags.join(', ') : '';
             document.getElementById('mission-notes').value = mission.notes || '';
+            
+            // Clear all tag checkboxes first
+            const tagCheckboxes = document.querySelectorAll('#mission-tags input[type="checkbox"]');
+            tagCheckboxes.forEach(checkbox => checkbox.checked = false);
+            
+            // Set checked state for existing tags
+            if (mission.tags && mission.tags.length > 0) {
+                mission.tags.forEach(tag => {
+                    const checkbox = document.querySelector(`#mission-tags input[value="${tag}"]`);
+                    if (checkbox) {
+                        checkbox.checked = true;
+                    }
+                });
+            }
             
             // Change form button to update mode
             const submitButton = addMissionForm.querySelector('button[type="submit"]');
@@ -503,14 +519,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         const damageToDeal = document.getElementById('mission-damage-to-deal').value;
         const damageToResist = document.getElementById('mission-damage-to-resist').value;
         const baseIskReward = parseInt(document.getElementById('mission-base-isk-reward').value) || 0;
+        const bonusIskReward = parseInt(document.getElementById('mission-bonus-isk-reward').value) || 0;
         const baseLpReward = parseInt(document.getElementById('mission-base-lp-reward').value) || 0;
-        const tagsInput = document.getElementById('mission-tags').value;
         const notes = document.getElementById('mission-notes').value;
         
-        // Parse tags
-        const tags = tagsInput 
-            ? tagsInput.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0)
-            : [];
+        // Parse tags from checkboxes
+        const tagCheckboxes = document.querySelectorAll('#mission-tags input[type="checkbox"]:checked');
+        const tags = Array.from(tagCheckboxes).map(checkbox => checkbox.value);
 
         const submitButton = e.target.querySelector('button[type="submit"]');
         const originalText = submitButton.textContent;
@@ -524,6 +539,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 damageToDeal: damageToDeal,
                 damageToResist: damageToResist,
                 baseIskReward: baseIskReward,
+                bonusIskReward: bonusIskReward,
                 baseLpReward: baseLpReward,
                 tags: tags,
                 notes: notes
@@ -547,6 +563,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             
             addMissionForm.reset();
+            
+            // Clear all tag checkboxes after form reset
+            const tagCheckboxes = document.querySelectorAll('#mission-tags input[type="checkbox"]');
+            tagCheckboxes.forEach(checkbox => checkbox.checked = false);
+            
             await renderMissions();
             
         } catch (error) {
