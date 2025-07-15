@@ -112,7 +112,6 @@ main {
 .grid {
   display: flex;
   width: 100%;
-  min-height: 100vh;
 }
 
 /* Navigation Styling */
@@ -224,7 +223,7 @@ article header {
   gap: 0.5rem;
 }
 
-.ship-actions button {
+.ship-actions button, .remove-checklist-item, .add-checklist-item {
   background: none;
   border: 1px solid var(--border-color);
   color: var(--color);
@@ -235,7 +234,7 @@ article header {
   transition: all var(--transition-speed) ease;
 }
 
-.ship-actions button:hover {
+.ship-actions, .remove-checklist-item, .add-checklist-item button:hover {
   background: var(--surface-color);
   border-color: var(--primary);
 }
@@ -695,31 +694,6 @@ code {
   color: var(--muted-color);
   font-style: italic;
   justify-content: center;
-}
-
-.remove-checklist-item {
-  background: var(--error);
-  color: white;
-  border: none;
-  border-radius: 50%;
-  width: 24px;
-  height: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  font-size: 16px;
-  line-height: 1;
-  transition: background-color var(--transition-speed);
-}
-
-.remove-checklist-item:hover {
-  background: #c82333;
-}
-
-.add-checklist-item {
-  display: flex;
-  gap: 0.5rem;
 }
 
 .checklist-input {
